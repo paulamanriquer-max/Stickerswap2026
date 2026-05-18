@@ -37,7 +37,7 @@ export const worldCupTeams: Team[] = [
   { name: "Sweden", code: "SWE", flag: "🇸🇪", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Tunisia", code: "TUN", flag: "🇹🇳", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Belgium", code: "BEL", flag: "🇧🇪", owned: 0, missing: 20, duplicates: 0, total: 20 },
-  { name: "Coca-Cola", code: "CC", flag: "🥤", owned: 0, missing: 12, duplicates: 0, total: 12 },
+  { name: "Coca-Cola", code: "CC", flag: "🥤", owned: 0, missing: 14, duplicates: 0, total: 14 },
   { name: "Egypt", code: "EGY", flag: "🇪🇬", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Iran", code: "IRN", flag: "🇮🇷", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "New Zealand", code: "NZL", flag: "🇳🇿", owned: 0, missing: 20, duplicates: 0, total: 20 },

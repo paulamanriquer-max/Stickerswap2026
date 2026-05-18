@@ -9,14 +9,15 @@ export interface Team {
 }
 
 // Panini FIFA World Cup 2026 official sticker album sections.
-// Ordered to match the album/checklist structure: Intro first, then each category.
+// Ordered to match the album review structure, including the Coca-Cola spread after Belgium.
 export const worldCupTeams: Team[] = [
-  { name: "Intro", code: "INTRO", flag: "🏆", owned: 0, missing: 20, duplicates: 0, total: 20 },
+  { name: "FWC", code: "FWC", flag: "🏆", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Algeria", code: "ALG", flag: "🇩🇿", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Argentina", code: "ARG", flag: "🇦🇷", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Australia", code: "AUS", flag: "🇦🇺", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Austria", code: "AUT", flag: "🇦🇹", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Belgium", code: "BEL", flag: "🇧🇪", owned: 0, missing: 20, duplicates: 0, total: 20 },
+  { name: "Coca-Cola", code: "CC", flag: "🥤", owned: 0, missing: 12, duplicates: 0, total: 12 },
   { name: "Bosnia and Herzegovina", code: "BIH", flag: "🇧🇦", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Brazil", code: "BRA", flag: "🇧🇷", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Canada", code: "CAN", flag: "🇨🇦", owned: 0, missing: 20, duplicates: 0, total: 20 },

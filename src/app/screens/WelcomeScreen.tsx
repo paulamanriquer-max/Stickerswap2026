@@ -1,9 +1,9 @@
 import svgPaths from "@/imports/IPhone161/svg-goga8cul8s";
-import { MapPin } from 'lucide-react';
+import { MapPin, User } from 'lucide-react';
+import { useState } from 'react';
 
 interface WelcomeScreenProps {
-  onCreateAccount: () => void;
-  onLogIn: () => void;
+  onUsernameSubmit: (username: string) => void;
 }
 
 function LogoText() {
@@ -69,7 +69,18 @@ function LogoCup() {
   );
 }
 
-export function WelcomeScreen({ onCreateAccount, onLogIn }: WelcomeScreenProps) {
+export function WelcomeScreen({ onUsernameSubmit }: WelcomeScreenProps) {
+  const [username, setUsername] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleContinue = () => {
+    if (!username.trim()) {
+      setError(true);
+      return;
+    }
+    onUsernameSubmit(username.trim());
+  };
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#090f1e" }}>
       {/* Scrollable content */}
@@ -100,22 +111,38 @@ export function WelcomeScreen({ onCreateAccount, onLogIn }: WelcomeScreenProps) 
 
       {/* Sticky Buttons */}
       <div className="fixed bottom-0 left-0 right-0 w-full px-5 py-6" style={{ backgroundColor: "#090f1e" }}>
-        <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+          <label className="text-xs font-semibold uppercase tracking-widest text-white/60">Enter your username</label>
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/45" />
+            <input
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value);
+                if (error) setError(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleContinue();
+              }}
+              placeholder="Collector name"
+              className={`h-12 w-full rounded-xl border bg-white/5 pl-11 pr-4 text-[16px] text-white outline-none placeholder:text-white/40 focus:ring-2 ${
+                error ? 'border-destructive focus:ring-destructive/40' : 'border-white/15 focus:border-[#00ddff] focus:ring-[#00ddff]/30'
+              }`}
+              style={{ fontFamily: "var(--font-body)" }}
+            />
+          </div>
+          {error && <p className="text-xs text-destructive">Username is required</p>}
+
           <button
-            onClick={onCreateAccount}
+            onClick={handleContinue}
             className="w-full rounded-xl py-[10px] px-4 text-[18px] font-medium text-center active:scale-95 transition-all"
             style={{ backgroundColor: "#00ddff", color: "#090f1e", fontFamily: "var(--font-body)" }}
           >
-            Create account
+            Start collecting
           </button>
-
-          <button
-            onClick={onLogIn}
-            className="w-full rounded-xl py-[10px] px-4 text-[18px] font-medium text-center border border-[#00ddff] text-[#00ddff] active:scale-95 transition-all"
-            style={{ fontFamily: "var(--font-body)" }}
-          >
-            Log in
-          </button>
+          <p className="text-center text-xs leading-5 text-white/50">
+            No email required. Add one later to back up your collection and unlock private chat.
+          </p>
         </div>
       </div>
     </div>

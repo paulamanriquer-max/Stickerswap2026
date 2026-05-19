@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { AlbumSelectionScreen } from './screens/AlbumSelectionScreen';
 import { LocationPermissionScreen } from './screens/LocationPermissionScreen';
@@ -21,6 +21,9 @@ import { ChatScreen } from './screens/ChatScreen';
 import { AdminLoginScreen } from './screens/AdminLoginScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { CitySelectionScreen } from './screens/CitySelectionScreen';
+import { AddEmailScreen } from './screens/AddEmailScreen';
+import { UpgradePrompt } from './components/UpgradePrompt';
+import { AppUser, backend, shouldPromptForUpgrade, StickerState } from './lib/backend';
 
 type Screen =
   | 'welcome'
@@ -41,6 +44,7 @@ type Screen =
   | 'location-settings'
   | 'notifications'
   | 'privacy-security'
+  | 'add-email'
   | 'admin-login'
   | 'admin';
 
@@ -51,6 +55,7 @@ interface Sticker {
   owned: boolean;
   missing: boolean;
   duplicateCount: number;
+  updatedAt?: string;
 }
 
 interface Message {
@@ -69,7 +74,8 @@ interface Conversation {
 }
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
+  const [user, setUser] = useState<AppUser | null>(() => backend.loadUser());
+  const [currentScreen, setCurrentScreen] = useState<Screen>(() => backend.loadUser() ? 'matches' : 'welcome');
   const [activeTab, setActiveTab] = useState<Tab>('matches');
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedCollector, setSelectedCollector] = useState<string>('');
@@ -77,10 +83,28 @@ export default function App() {
   const [selectedCity, setSelectedCity] = useState<string>('Kansas City');
   const [locationEnabled, setLocationEnabled] = useState<boolean>(false);
   const [showAddSticker, setShowAddSticker] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => Boolean(backend.loadUser()));
   const [previousScreen, setPreviousScreen] = useState<Screen | null>(null);
-  const [stickers, setStickers] = useState<Sticker[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [stickers, setStickers] = useState<Sticker[]>(() => backend.loadStickers());
+  const [conversations, setConversations] = useState<Conversation[]>(() => backend.loadConversations<Conversation>());
+  const [publicMessages, setPublicMessages] = useState<Message[]>(() => backend.loadPublicMessages());
+  const [upgradePrompt, setUpgradePrompt] = useState<{ title?: string; message?: string } | null>(null);
+
+  useEffect(() => {
+    backend.track('app_open', { user_id: user?.id, anonymous: user?.isAnonymous ?? true });
+  }, []);
+
+  useEffect(() => {
+    backend.saveStickers(stickers as StickerState[]);
+  }, [stickers]);
+
+  useEffect(() => {
+    backend.saveConversations(conversations);
+  }, [conversations]);
+
+  useEffect(() => {
+    backend.savePublicMessages(publicMessages);
+  }, [publicMessages]);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
@@ -98,7 +122,15 @@ export default function App() {
   const handleCitySelected = (city: string) => {
     setSelectedCity(city);
     setHasCompletedOnboarding(true);
+    backend.track('nearby_users_found', { city });
+    backend.track('match_found', { city, count: 4 });
     setCurrentScreen('matches');
+  };
+
+  const handleUsernameSubmit = (username: string) => {
+    const createdUser = backend.createAnonymousUser(username);
+    setUser(createdUser);
+    setCurrentScreen('location-permission');
   };
 
   const handleNavigate = (screen: string) => {
@@ -117,6 +149,17 @@ export default function App() {
   };
 
   const handleSendMessage = (username: string, text: string) => {
+    if (!user?.email) {
+      backend.track('chat_attempted', { target: username, blocked: true });
+      setUpgradePrompt({
+        title: 'Add your email to chat and trade with others',
+        message: 'Private messages are unlocked after you add an email. Your current username and stickers stay saved.',
+      });
+      return;
+    }
+
+    backend.track('message_sent', { target: username, type: 'private' });
+
     const newMessage: Message = {
       id: Date.now().toString(),
       text,
@@ -139,6 +182,31 @@ export default function App() {
     });
   };
 
+  const handleSendPublicMessage = (text: string) => {
+    if (!text.trim()) return;
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: text.trim(),
+      sender: user?.username || 'You',
+      timestamp: new Date(),
+      isOwn: true,
+    };
+    backend.track('message_sent', { type: 'public' });
+    setPublicMessages(prev => [...prev, newMessage]);
+  };
+
+  const handleUpgradeWithEmail = (email: string) => {
+    const updatedUser = backend.addEmailToCurrentUser(email);
+    if (updatedUser) setUser(updatedUser);
+    setUpgradePrompt(null);
+    if (selectedChatUser) setCurrentScreen('chat');
+    else setCurrentScreen('profile');
+  };
+
+  const requestUpgrade = (title?: string, message?: string) => {
+    setUpgradePrompt({ title, message });
+  };
+
   const showBottomNav = hasCompletedOnboarding &&
     ['album', 'matches', 'chats', 'profile'].includes(currentScreen);
 
@@ -147,8 +215,7 @@ export default function App() {
       case 'welcome':
         return (
           <WelcomeScreen
-            onCreateAccount={() => setCurrentScreen('sign-up')}
-            onLogIn={() => setCurrentScreen('sign-in')}
+            onUsernameSubmit={handleUsernameSubmit}
           />
         );
 
@@ -157,6 +224,14 @@ export default function App() {
 
       case 'sign-up':
         return <SignUpScreen onNavigate={handleNavigate} />;
+
+      case 'add-email':
+        return (
+          <AddEmailScreen
+            onBack={handleBack}
+            onSubmit={handleUpgradeWithEmail}
+          />
+        );
 
       case 'reset-password':
         return <ResetPasswordScreen onNavigate={handleNavigate} />;
@@ -234,6 +309,15 @@ export default function App() {
             username={selectedCollector}
             onBack={() => setCurrentScreen('matches')}
             onStartChat={() => {
+              backend.track('chat_attempted', { target: selectedCollector, blocked: !user?.email });
+              if (!user?.email) {
+                setSelectedChatUser(selectedCollector);
+                requestUpgrade(
+                  'Add your email to chat and trade with others',
+                  'Private chat uses magic-link accounts so collectors can recover conversations and keep trades safer.'
+                );
+                return;
+              }
               setSelectedChatUser(selectedCollector);
               setCurrentScreen('chat');
             }}
@@ -244,8 +328,17 @@ export default function App() {
         return (
           <ChatsScreen
             conversations={conversations}
+            publicMessages={publicMessages}
             city={selectedCity}
+            canUsePrivateChat={Boolean(user?.email)}
+            onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onChatClick={(username) => {
+              backend.track('chat_attempted', { target: username, blocked: !user?.email && !username.includes(' - ') });
+              if (!user?.email && !username.includes(' - ')) {
+                setSelectedChatUser(username);
+                requestUpgrade('Add your email to chat and trade with others');
+                return;
+              }
               setSelectedChatUser(username);
               setCurrentScreen('chat');
             }}
@@ -256,14 +349,20 @@ export default function App() {
         return (
           <ChatScreen
             username={selectedChatUser}
-            messages={conversations.find(c => c.username === selectedChatUser)?.messages || []}
+            messages={selectedChatUser.includes(' - ') ? publicMessages : conversations.find(c => c.username === selectedChatUser)?.messages || []}
+            isPublic={selectedChatUser.includes(' - ')}
+            canSend={selectedChatUser.includes(' - ') || Boolean(user?.email)}
             onBack={() => setCurrentScreen('chats')}
-            onSendMessage={(text) => handleSendMessage(selectedChatUser, text)}
+            onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
+            onSendMessage={(text) => {
+              if (selectedChatUser.includes(' - ')) handleSendPublicMessage(text);
+              else handleSendMessage(selectedChatUser, text);
+            }}
           />
         );
 
       case 'profile':
-        return <ProfileScreen onNavigate={handleNavigate} stickers={stickers} />;
+        return <ProfileScreen onNavigate={handleNavigate} stickers={stickers} user={user} />;
 
       case 'edit-profile':
         return <EditProfileScreen onBack={handleBack} />;
@@ -317,25 +416,52 @@ export default function App() {
             existingStickers={stickers}
             onAdd={(code, status, duplicateCount) => {
               const existingIndex = stickers.findIndex(s => s.code === code);
+              const now = new Date().toISOString();
+              const applyStickerUpdate = (list: Sticker[]) => {
+                if (existingIndex !== -1) {
+                  return list.map((s, i) => {
+                    if (i !== existingIndex) return s;
+                    if (status === 'owned') return { ...s, owned: true, missing: false, updatedAt: now };
+                    if (status === 'duplicate') return { ...s, duplicateCount: s.duplicateCount + (duplicateCount || 1), missing: false, updatedAt: now };
+                    if (status === 'missing') return { ...s, missing: true, owned: false, duplicateCount: 0, updatedAt: now };
+                    return s;
+                  });
+                }
 
-              if (existingIndex !== -1) {
-                setStickers(prev => prev.map((s, i) => {
-                  if (i !== existingIndex) return s;
-                  if (status === 'owned') return { ...s, owned: true, missing: false };
-                  if (status === 'duplicate') return { ...s, duplicateCount: s.duplicateCount + (duplicateCount || 1), missing: false };
-                  if (status === 'missing') return { ...s, missing: true, owned: false, duplicateCount: 0 };
-                  return s;
-                }));
-              } else {
-                setStickers(prev => [...prev, {
+                return [...list, {
                   code,
                   owned: status === 'owned',
                   missing: status === 'missing',
                   duplicateCount: status === 'duplicate' ? (duplicateCount || 1) : 0,
-                }]);
+                  updatedAt: now,
+                }];
+              };
+
+              const nextStickers = applyStickerUpdate(stickers);
+              setStickers(() => nextStickers);
+
+              backend.track(status === 'duplicate' ? 'duplicate_added' : 'sticker_added', { code, status, quantity: duplicateCount || 1 });
+              backend.track('collection_progress', {
+                collected: nextStickers.filter(s => s.owned || s.duplicateCount > 0).length,
+                duplicates: nextStickers.reduce((sum, s) => sum + s.duplicateCount, 0),
+              });
+              if (!user?.email && shouldPromptForUpgrade(nextStickers as StickerState[])) {
+                requestUpgrade('Save your collection so you don’t lose it');
               }
 
               setShowAddSticker(false);
+            }}
+          />
+        )}
+        {upgradePrompt && (
+          <UpgradePrompt
+            title={upgradePrompt.title}
+            message={upgradePrompt.message}
+            onDismiss={() => setUpgradePrompt(null)}
+            onAddEmail={() => {
+              setPreviousScreen(currentScreen);
+              setUpgradePrompt(null);
+              setCurrentScreen('add-email');
             }}
           />
         )}

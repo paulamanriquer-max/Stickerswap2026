@@ -12,11 +12,14 @@ interface Message {
 interface ChatScreenProps {
   username: string;
   messages: Message[];
+  isPublic?: boolean;
+  canSend?: boolean;
   onBack: () => void;
   onSendMessage: (text: string) => void;
+  onUpgradeRequest?: () => void;
 }
 
-export function ChatScreen({ username, messages = [], onBack, onSendMessage }: ChatScreenProps) {
+export function ChatScreen({ username, messages = [], isPublic = false, canSend = true, onBack, onSendMessage, onUpgradeRequest }: ChatScreenProps) {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +32,10 @@ export function ChatScreen({ username, messages = [], onBack, onSendMessage }: C
   }, [messages]);
 
   const handleSend = () => {
+    if (!canSend) {
+      onUpgradeRequest?.();
+      return;
+    }
     if (message.trim() && onSendMessage) {
       onSendMessage(message.trim());
       setMessage('');
@@ -61,7 +68,7 @@ export function ChatScreen({ username, messages = [], onBack, onSendMessage }: C
           </div>
           <div className="flex-1">
             <h2 className="font-bold text-foreground">{username}</h2>
-            <p className="text-xs text-muted-foreground">Online</p>
+            <p className="text-xs text-muted-foreground">{isPublic ? 'Public room' : 'Online'}</p>
           </div>
         </div>
       </div>
@@ -70,7 +77,7 @@ export function ChatScreen({ username, messages = [], onBack, onSendMessage }: C
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground text-sm">No messages yet. Start the conversation!</p>
+            <p className="text-muted-foreground text-sm">{canSend ? 'No messages yet. Start the conversation!' : 'Add your email to send private messages.'}</p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -101,6 +108,17 @@ export function ChatScreen({ username, messages = [], onBack, onSendMessage }: C
       </div>
 
       {/* Input */}
+      {!canSend && (
+        <div className="px-4 py-3 bg-primary/10 border-t border-primary/20">
+          <button
+            onClick={onUpgradeRequest}
+            className="h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground active:scale-95"
+          >
+            Add email to chat and trade with others
+          </button>
+        </div>
+      )}
+
       <div className="px-4 py-3 bg-card/30 backdrop-blur-xl border-t border-border/50">
         <div className="flex items-center gap-2">
           <input
@@ -114,11 +132,12 @@ export function ChatScreen({ username, messages = [], onBack, onSendMessage }: C
               }
             }}
             placeholder="Type a message..."
+            disabled={!canSend}
             className="flex-1 h-11 px-4 bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-sm"
           />
           <button
             onClick={handleSend}
-            disabled={!message.trim()}
+            disabled={canSend && !message.trim()}
             className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />

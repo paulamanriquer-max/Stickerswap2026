@@ -1,4 +1,5 @@
 import { ChevronRight, MapPin, Bell, Shield, User as UserIcon, LogOut } from 'lucide-react';
+import { AppUser } from '../lib/backend';
 
 interface Sticker {
   code: string;
@@ -10,11 +11,12 @@ interface Sticker {
 interface ProfileScreenProps {
   onNavigate?: (screen: string) => void;
   stickers?: Sticker[];
+  user?: AppUser | null;
 }
 
-export function ProfileScreen({ onNavigate, stickers = [] }: ProfileScreenProps) {
+export function ProfileScreen({ onNavigate, stickers = [], user }: ProfileScreenProps) {
   const menuItems = [
-    { icon: UserIcon, label: 'Edit Profile', screen: 'edit-profile' },
+    { icon: UserIcon, label: user?.email ? 'Edit Profile' : 'Add Email Backup', screen: user?.email ? 'edit-profile' : 'add-email' },
     { icon: MapPin, label: 'Location Settings', screen: 'location-settings' },
     { icon: Bell, label: 'Notifications', screen: 'notifications' },
     { icon: Shield, label: 'Privacy & Security', screen: 'privacy-security' },
@@ -38,11 +40,13 @@ export function ProfileScreen({ onNavigate, stickers = [] }: ProfileScreenProps)
 
         <div className="flex items-center gap-3 p-3 bg-card/30 backdrop-blur-xl rounded-xl border border-border/50 shadow-lg mb-6">
           <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-            <span className="text-primary-foreground font-bold text-base">C</span>
+            <span className="text-primary-foreground font-bold text-base">{(user?.username || 'C').charAt(0).toUpperCase()}</span>
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-base">Carlos</h3>
-            <p className="text-xs text-muted-foreground">Member since May 2026</p>
+            <h3 className="font-semibold text-base">{user?.username || 'Collector'}</h3>
+            <p className="text-xs text-muted-foreground">
+              {user?.email ? 'Email saved for backup and chat' : 'Anonymous collection, email optional'}
+            </p>
           </div>
         </div>
 

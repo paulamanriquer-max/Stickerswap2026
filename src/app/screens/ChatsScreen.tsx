@@ -18,13 +18,16 @@ interface Conversation {
 
 interface ChatsScreenProps {
   conversations: Conversation[];
+  publicMessages: Message[];
   onChatClick: (username: string) => void;
+  onUpgradeRequest: () => void;
+  canUsePrivateChat: boolean;
   city: string;
 }
 
 type ChatView = 'public' | 'private';
 
-export function ChatsScreen({ conversations, onChatClick, city }: ChatsScreenProps) {
+export function ChatsScreen({ conversations, publicMessages, onChatClick, onUpgradeRequest, canUsePrivateChat, city }: ChatsScreenProps) {
   const [view, setView] = useState<ChatView>('public');
   const formatTimestamp = (date: Date) => {
     const now = new Date();
@@ -48,9 +51,10 @@ export function ChatsScreen({ conversations, onChatClick, city }: ChatsScreenPro
     return timeB - timeA;
   });
 
+  const latestPublicMessage = publicMessages[publicMessages.length - 1]?.text;
   const publicRooms = [
-    { name: `${city} - Meetups & Trades`, memberCount: 127 },
-    { name: `${city} - General Chat`, memberCount: 89 },
+    { name: `${city} - Meetups & Trades`, memberCount: 127, lastMessage: latestPublicMessage },
+    { name: `${city} - General Chat`, memberCount: 89, lastMessage: latestPublicMessage },
   ];
 
   return (
@@ -100,6 +104,7 @@ export function ChatsScreen({ conversations, onChatClick, city }: ChatsScreenPro
                 <div className="flex-1 min-w-0 text-left">
                   <h3 className="font-semibold text-foreground text-sm">{room.name}</h3>
                   <p className="text-xs text-muted-foreground">{room.memberCount} members</p>
+                  {room.lastMessage && <p className="text-xs text-muted-foreground truncate mt-1">{room.lastMessage}</p>}
                 </div>
               </button>
             ))}
@@ -109,6 +114,20 @@ export function ChatsScreen({ conversations, onChatClick, city }: ChatsScreenPro
         {/* Private Chats Section */}
         {view === 'private' && (
           <div>
+            {!canUsePrivateChat && (
+              <div className="mb-4 rounded-xl border border-primary/20 bg-primary/10 p-4">
+                <h3 className="text-sm font-bold text-foreground">Add your email to chat and trade with others</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  You can browse collectors now. Private messages unlock after magic-link email setup.
+                </p>
+                <button
+                  onClick={onUpgradeRequest}
+                  className="mt-3 h-10 w-full rounded-lg bg-primary text-sm font-bold text-primary-foreground active:scale-95"
+                >
+                  Add email
+                </button>
+              </div>
+            )}
             {sortedConversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <MessageCircle className="w-12 h-12 text-muted-foreground mb-3" />

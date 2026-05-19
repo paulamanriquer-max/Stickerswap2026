@@ -9,7 +9,7 @@ export interface Team {
 }
 
 // Panini FIFA World Cup 2026 official sticker album sections.
-// Ordered to support page-by-page review against the printed album.
+// Ordered to support page-by-page review against the US printed album.
 export const worldCupTeams: Team[] = [
   { name: "FWC", code: "FWC", flag: "🏆", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Mexico", code: "MEX", flag: "🇲🇽", owned: 0, missing: 20, duplicates: 0, total: 20 },
@@ -37,7 +37,6 @@ export const worldCupTeams: Team[] = [
   { name: "Sweden", code: "SWE", flag: "🇸🇪", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Tunisia", code: "TUN", flag: "🇹🇳", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Belgium", code: "BEL", flag: "🇧🇪", owned: 0, missing: 20, duplicates: 0, total: 20 },
-  { name: "Coca-Cola", code: "CC", flag: "🥤", owned: 0, missing: 14, duplicates: 0, total: 14 },
   { name: "Egypt", code: "EGY", flag: "🇪🇬", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Iran", code: "IRN", flag: "🇮🇷", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "New Zealand", code: "NZL", flag: "🇳🇿", owned: 0, missing: 20, duplicates: 0, total: 20 },
@@ -60,7 +59,8 @@ export const worldCupTeams: Team[] = [
   { name: "England", code: "ENG", flag: "🏴", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Croatia", code: "CRO", flag: "🇭🇷", owned: 0, missing: 20, duplicates: 0, total: 20 },
   { name: "Ghana", code: "GHA", flag: "🇬🇭", owned: 0, missing: 20, duplicates: 0, total: 20 },
-  { name: "Panama", code: "PAN", flag: "🇵🇦", owned: 0, missing: 20, duplicates: 0, total: 20 }
+  { name: "Panama", code: "PAN", flag: "🇵🇦", owned: 0, missing: 20, duplicates: 0, total: 20 },
+  { name: "Coca-Cola", code: "CC", flag: "🥤", owned: 0, missing: 12, duplicates: 0, total: 12 }
 ];
 
 export const getTeamByCode = (code: string) => {

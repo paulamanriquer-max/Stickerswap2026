@@ -21,7 +21,7 @@ interface AddStickerSheetProps {
 }
 
 export function AddStickerSheet({ onClose, existingStickers, onAdd }: AddStickerSheetProps) {
-  const [selectedTeam, setSelectedTeam] = useState('BRA');
+  const [selectedTeam, setSelectedTeam] = useState(worldCupTeams[0]?.code || 'FWC');
   const [stickerNumber, setStickerNumber] = useState('');
   const [status, setStatus] = useState('owned');
   const [teamSearch, setTeamSearch] = useState('');
@@ -89,27 +89,7 @@ export function AddStickerSheet({ onClose, existingStickers, onAdd }: AddSticker
         return;
       }
 
-      // Case 3: Already marked as missing, trying to add as missing again
-      if (existingSticker.missing && status === 'missing') {
-        setDuplicateInfo({
-          code: stickerCode,
-          existingStatus: 'missing',
-          attemptedStatus: status,
-        });
-        setShowDuplicateModal(true);
-        return;
-      }
-
-      // Case 4: Has owned or duplicates, trying to mark as missing (destructive action)
-      if ((existingSticker.owned || existingSticker.duplicateCount > 0) && status === 'missing') {
-        setDuplicateInfo({
-          code: stickerCode,
-          existingStatus: existingSticker.owned ? 'owned' : 'duplicate',
-          attemptedStatus: 'missing',
-        });
-        setShowDuplicateModal(true);
-        return;
-      }
+      // Missing is the default state, so this sheet only moves stickers into a collected state.
     }
 
     // No conflict, proceed with adding
@@ -155,9 +135,9 @@ export function AddStickerSheet({ onClose, existingStickers, onAdd }: AddSticker
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-end z-50" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[80] px-4 sm:pb-6" onClick={onClose}>
         <div
-          className="w-full bg-background rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto border-t border-border/50"
+          className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-6 max-h-[90vh] overflow-y-auto border border-border/50 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
         <div className="flex items-center justify-between mb-6">
@@ -235,7 +215,6 @@ export function AddStickerSheet({ onClose, existingStickers, onAdd }: AddSticker
             <SegmentedControl
               options={[
                 { value: 'owned', label: 'Owned' },
-                { value: 'missing', label: 'Missing' },
                 { value: 'duplicate', label: 'Duplicate' },
               ]}
               value={status}

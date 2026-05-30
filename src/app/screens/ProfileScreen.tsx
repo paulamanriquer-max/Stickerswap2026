@@ -10,11 +10,12 @@ interface Sticker {
 
 interface ProfileScreenProps {
   onNavigate?: (screen: string) => void;
+  onLogout?: () => void;
   stickers?: Sticker[];
   user?: AppUser | null;
 }
 
-export function ProfileScreen({ onNavigate, stickers = [], user }: ProfileScreenProps) {
+export function ProfileScreen({ onNavigate, onLogout, stickers = [], user }: ProfileScreenProps) {
   const menuItems = [
     { icon: UserIcon, label: user?.email ? 'Edit Profile' : 'Add Email Backup', screen: user?.email ? 'edit-profile' : 'add-email' },
     { icon: MapPin, label: 'Location Settings', screen: 'location-settings' },
@@ -24,10 +25,10 @@ export function ProfileScreen({ onNavigate, stickers = [], user }: ProfileScreen
 
   // Calculate trading stats from actual data
   const totalTrades = stickers.filter(s => s.owned || s.duplicateCount > 0).length;
-  const ownedStickers = stickers.filter(s => s.owned).length;
+  const collectedStickers = stickers.filter(s => s.owned || s.duplicateCount > 0).length;
   const totalDuplicates = stickers.reduce((sum, s) => sum + s.duplicateCount, 0);
   const completionPercentage = stickers.length > 0
-    ? Math.round((ownedStickers / stickers.length) * 100)
+    ? Math.round((collectedStickers / stickers.length) * 100)
     : 0;
 
   return (
@@ -45,7 +46,7 @@ export function ProfileScreen({ onNavigate, stickers = [], user }: ProfileScreen
           <div className="flex-1">
             <h3 className="font-semibold text-base">{user?.username || 'Collector'}</h3>
             <p className="text-xs text-muted-foreground">
-              {user?.email ? 'Email saved for backup and chat' : 'Anonymous collection, email optional'}
+              {user?.email || 'Email-backed account'}
             </p>
           </div>
         </div>
@@ -88,11 +89,11 @@ export function ProfileScreen({ onNavigate, stickers = [], user }: ProfileScreen
         </div>
 
         <button
-          onClick={() => onNavigate?.('sign-in')}
+          onClick={onLogout}
           className="w-full flex items-center justify-center gap-2 p-3 bg-destructive/10 text-destructive rounded-xl active:scale-[0.98] transition-transform"
         >
           <LogOut className="w-4 h-4" />
-          <span className="font-medium text-sm">Sign Out</span>
+          <span className="font-medium text-sm">Log out</span>
         </button>
       </div>
     </div>

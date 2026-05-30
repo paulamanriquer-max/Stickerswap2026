@@ -1,48 +1,34 @@
 import { CollectorCard } from '../components/CollectorCard';
 import { EmptyState } from '../components/EmptyState';
 import { SearchBar } from '../components/SearchBar';
-import { MapPin, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { MapPin } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { backend, CollectorComparison, StickerState } from '../lib/backend';
 
 interface MatchesScreenProps {
-  onCollectorClick: (username: string) => void;
-  locationEnabled: boolean;
+  onCollectorClick: (collectorId: string) => void;
   city: string;
+  stickers: StickerState[];
 }
 
-export function MatchesScreen({ onCollectorClick, locationEnabled, city }: MatchesScreenProps) {
+export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScreenProps) {
   const [search, setSearch] = useState('');
+  const [collectors, setCollectors] = useState<CollectorComparison[]>(() => backend.getCollectorComparisons(stickers));
 
-  const collectors = [
-    {
-      username: 'Carlos',
-      distance: '0.4 mi',
-      matchScore: 95,
-      theyHaveYouNeed: 8,
-      youHaveTheyNeed: 6,
-    },
-    {
-      username: 'Ana',
-      distance: '0.8 mi',
-      matchScore: 88,
-      theyHaveYouNeed: 5,
-      youHaveTheyNeed: 7,
-    },
-    {
-      username: 'Mateo',
-      distance: '1.2 mi',
-      matchScore: 76,
-      theyHaveYouNeed: 4,
-      youHaveTheyNeed: 3,
-    },
-    {
-      username: 'Sofia',
-      distance: '2.5 mi',
-      matchScore: 65,
-      theyHaveYouNeed: 3,
-      youHaveTheyNeed: 4,
-    },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    setCollectors(backend.getCollectorComparisons(stickers));
+    void backend.refreshCollectorComparisons()
+      .then(nextCollectors => {
+        if (isMounted) setCollectors(nextCollectors);
+      })
+      .catch(() => {
+        if (isMounted) setCollectors(backend.getCollectorComparisons(stickers));
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [stickers]);
 
   const filteredCollectors = collectors.filter(c =>
     c.username.toLowerCase().includes(search.toLowerCase())
@@ -54,7 +40,7 @@ export function MatchesScreen({ onCollectorClick, locationEnabled, city }: Match
       <div className="px-4 pt-6 pb-2">
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-foreground mb-1">Matches</h1>
-          <p className="text-sm text-muted-foreground">Nearby collectors sorted by best match</p>
+          <p className="text-sm text-muted-foreground">Kansas City collectors sorted by best match</p>
         </div>
       </div>
 
@@ -71,16 +57,16 @@ export function MatchesScreen({ onCollectorClick, locationEnabled, city }: Match
           <EmptyState
             icon={<MapPin className="w-16 h-16" />}
             title="No collectors found"
-            description="Try adjusting your search or check back later for new matches nearby"
+            description="No other Kansas City collectors have joined yet. New testers will appear here after they create accounts."
           />
         ) : (
           <>
             <div className="flex items-center justify-between mb-2">
-              <h3>{filteredCollectors.length} collectors nearby</h3>
+              <h3>{filteredCollectors.length} collectors in Kansas City</h3>
               <div className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-full">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-muted-foreground">
-                  {locationEnabled ? '3 mi' : city}
+                  {city}
                 </span>
               </div>
             </div>
@@ -88,10 +74,12 @@ export function MatchesScreen({ onCollectorClick, locationEnabled, city }: Match
             <div className="space-y-2 pb-4">
               {filteredCollectors.map((collector) => (
                 <CollectorCard
-                  key={collector.username}
-                  {...collector}
-                  onClick={() => onCollectorClick(collector.username)}
-                  locationEnabled={locationEnabled}
+                  key={collector.id}
+                  username={collector.username}
+                  matchScore={collector.matchScore}
+                  theyHaveYouNeed={collector.theyHaveYouNeed}
+                  youHaveTheyNeed={collector.youHaveTheyNeed}
+                  onClick={() => onCollectorClick(collector.id)}
                   city={city}
                 />
               ))}

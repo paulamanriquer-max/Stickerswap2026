@@ -4,73 +4,9 @@ import {
   ShieldCheck, CheckCircle, XCircle, Clock, ChevronDown,
   Trash2, Ban, UserCheck, ArrowLeft, TrendingUp, MessageSquare,
 } from 'lucide-react';
+import { AdminUserSummary, backend } from '../lib/backend';
 
-// ── Mock data ────────────────────────────────────────────────────────────────
-
-const signupData = [
-  { date: 'Apr 15', signups: 1 },
-  { date: 'Apr 16', signups: 3 },
-  { date: 'Apr 17', signups: 2 },
-  { date: 'Apr 18', signups: 4 },
-  { date: 'Apr 19', signups: 1 },
-  { date: 'Apr 20', signups: 5 },
-  { date: 'Apr 21', signups: 3 },
-  { date: 'Apr 22', signups: 6 },
-  { date: 'Apr 23', signups: 4 },
-  { date: 'Apr 24', signups: 7 },
-  { date: 'Apr 25', signups: 5 },
-  { date: 'Apr 26', signups: 4 },
-  { date: 'Apr 27', signups: 8 },
-  { date: 'Apr 28', signups: 6 },
-  { date: 'Apr 29', signups: 3 },
-  { date: 'Apr 30', signups: 9 },
-  { date: 'May 1',  signups: 4 },
-  { date: 'May 2',  signups: 2 },
-  { date: 'May 3',  signups: 5 },
-  { date: 'May 4',  signups: 3 },
-  { date: 'May 5',  signups: 8 },
-  { date: 'May 6',  signups: 6 },
-  { date: 'May 7',  signups: 11 },
-  { date: 'May 8',  signups: 9 },
-  { date: 'May 9',  signups: 14 },
-  { date: 'May 10', signups: 7 },
-  { date: 'May 11', signups: 16 },
-  { date: 'May 12', signups: 12 },
-  { date: 'May 13', signups: 19 },
-  { date: 'May 14', signups: 15 },
-  { date: 'May 15', signups: 21 },
-];
-
-type UserStatus = 'active' | 'suspended' | 'banned';
-
-interface AppUser {
-  id: string;
-  name: string;
-  email: string;
-  joinedAt: string;
-  stickers: number;
-  trades: number;
-  status: UserStatus;
-  location: string;
-}
-
-const initialUsers: AppUser[] = [
-  { id: '1', name: 'Carlos Mendez',   email: 'carlos@gmail.com',    joinedAt: '2026-05-01', stickers: 145, trades: 12, status: 'active',    location: 'Mexico City' },
-  { id: '2', name: 'Sophie Laurent',  email: 'sophie@gmail.com',    joinedAt: '2026-05-02', stickers: 203, trades: 31, status: 'active',    location: 'Paris' },
-  { id: '3', name: 'Ravi Patel',      email: 'ravi@gmail.com',      joinedAt: '2026-05-03', stickers: 88,  trades: 7,  status: 'active',    location: 'Mumbai' },
-  { id: '4', name: 'Lena Fischer',    email: 'lena@gmail.com',      joinedAt: '2026-05-04', stickers: 312, trades: 44, status: 'active',    location: 'Berlin' },
-  { id: '5', name: 'Diego Romero',    email: 'diego@gmail.com',     joinedAt: '2026-05-05', stickers: 57,  trades: 3,  status: 'suspended', location: 'Buenos Aires' },
-  { id: '6', name: 'Yuki Tanaka',     email: 'yuki@gmail.com',      joinedAt: '2026-05-06', stickers: 178, trades: 22, status: 'active',    location: 'Tokyo' },
-  { id: '7', name: 'Amara Diallo',    email: 'amara@gmail.com',     joinedAt: '2026-05-07', stickers: 94,  trades: 9,  status: 'active',    location: 'Dakar' },
-  { id: '8', name: 'Tom Eriksson',    email: 'tom@gmail.com',       joinedAt: '2026-05-08', stickers: 261, trades: 38, status: 'banned',    location: 'Stockholm' },
-  { id: '9', name: 'Fatima Al-Zahra', email: 'fatima@gmail.com',    joinedAt: '2026-05-09', stickers: 133, trades: 17, status: 'active',    location: 'Casablanca' },
-  { id: '10', name: 'Ben Clarke',     email: 'ben@gmail.com',       joinedAt: '2026-05-10', stickers: 76,  trades: 5,  status: 'active',    location: 'London' },
-  { id: '11', name: 'Isabel Costa',   email: 'isabel@gmail.com',    joinedAt: '2026-05-11', stickers: 189, trades: 26, status: 'active',    location: 'Lisbon' },
-  { id: '12', name: 'Kwame Asante',   email: 'kwame@gmail.com',     joinedAt: '2026-05-12', stickers: 44,  trades: 2,  status: 'active',    location: 'Accra' },
-  { id: '13', name: 'Mei Zhao',       email: 'mei@gmail.com',       joinedAt: '2026-05-13', stickers: 222, trades: 33, status: 'active',    location: 'Shanghai' },
-  { id: '14', name: 'Lucas Oliveira', email: 'lucas@gmail.com',     joinedAt: '2026-05-14', stickers: 301, trades: 41, status: 'active',    location: 'São Paulo' },
-  { id: '15', name: 'Nia Williams',   email: 'nia@gmail.com',       joinedAt: '2026-05-15', stickers: 18,  trades: 0,  status: 'active',    location: 'Lagos' },
-];
+type UserStatus = AdminUserSummary['status'];
 
 type IssueSeverity = 'low' | 'medium' | 'high';
 type IssueStatus = 'open' | 'in-progress' | 'resolved';
@@ -85,16 +21,7 @@ interface Issue {
   createdAt: string;
 }
 
-const initialIssues: Issue[] = [
-  { id: '1', user: 'Carlos Mendez',   title: 'App crashes when adding sticker #312',       description: 'Tapping "Add" on sticker 312 closes the app immediately. Reproducible every time.',           severity: 'high',   status: 'open',        createdAt: '2026-05-10' },
-  { id: '2', user: 'Lena Fischer',    title: 'Duplicate count shows wrong number',          description: 'I have 3 copies of ARG 7 but the album shows 2. Seems like a counting bug.',                   severity: 'medium', status: 'in-progress', createdAt: '2026-05-11' },
-  { id: '3', user: 'Diego Romero',    title: 'Cannot send message to matched user',         description: 'Chat screen opens but the send button is greyed out and nothing happens.',                      severity: 'high',   status: 'open',        createdAt: '2026-05-11' },
-  { id: '4', user: 'Ravi Patel',      title: 'Profile photo not saving',                   description: 'Uploaded a new profile picture but it reverts to the default every time I reopen the app.',     severity: 'medium', status: 'resolved',    createdAt: '2026-05-09' },
-  { id: '5', user: 'Yuki Tanaka',     title: 'Search not finding teams by code',           description: 'Searching "JPN" returns no results but searching "Japan" works fine.',                          severity: 'low',    status: 'resolved',    createdAt: '2026-05-08' },
-  { id: '6', user: 'Ben Clarke',      title: 'Notifications not arriving',                 description: "I turned on notifications but haven't received any trade alerts.",                               severity: 'medium', status: 'open',        createdAt: '2026-05-13' },
-  { id: '7', user: 'Amara Diallo',    title: 'Completion percentage stuck at 0%',           description: 'Added 30+ stickers but the progress bar still shows 0%. Stats seem broken.',                    severity: 'high',   status: 'in-progress', createdAt: '2026-05-14' },
-  { id: '8', user: 'Isabel Costa',    title: 'Trade history not loading',                  description: 'The trades section in my profile shows a spinner indefinitely.',                                 severity: 'low',    status: 'open',        createdAt: '2026-05-15' },
-];
+const initialIssues: Issue[] = [];
 
 interface ChatMessage {
   id: string;
@@ -106,13 +33,18 @@ interface ChatMessage {
   flagged: boolean;
 }
 
-const initialChatMessages: ChatMessage[] = [
-  { id: '1', user: 'Carlos Mendez', room: 'Meetups & Trades', city: 'Kansas City', message: 'Anyone want to meet at Plaza tomorrow at 2pm?', timestamp: '2026-05-15 14:23', flagged: false },
-  { id: '2', user: 'Sophie Laurent', room: 'General Chat', city: 'Kansas City', message: 'Just completed my first team! So excited!', timestamp: '2026-05-15 13:15', flagged: false },
-  { id: '3', user: 'Diego Romero', room: 'Meetups & Trades', city: 'Kansas City', message: 'SPAM LINK - Buy cheap stickers here!!!', timestamp: '2026-05-15 12:45', flagged: true },
-  { id: '4', user: 'Lena Fischer', room: 'General Chat', city: 'New York', message: 'Does anyone have duplicates of team USA?', timestamp: '2026-05-15 11:30', flagged: false },
-  { id: '5', user: 'Yuki Tanaka', room: 'Meetups & Trades', city: 'New York', message: 'Central Park meetup this Saturday!', timestamp: '2026-05-15 10:20', flagged: false },
-];
+const initialChatMessages: ChatMessage[] = [];
+
+const loadAdminChatMessages = (): ChatMessage[] =>
+  backend.loadPublicMessages().map(message => ({
+    id: message.id,
+    user: message.sender,
+    room: 'Public Chat',
+    city: 'Kansas City',
+    message: message.text,
+    timestamp: new Date(message.timestamp).toLocaleString(),
+    flagged: false,
+  }));
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -138,7 +70,7 @@ const issueStatusColors: Record<IssueStatus, string> = {
 
 function SignupChart({ data, days }: { data: { date: string; signups: number }[]; days: number }) {
   const [tooltip, setTooltip] = useState<{ index: number; x: number; y: number } | null>(null);
-  const max = Math.max(...data.map(d => d.signups));
+  const max = Math.max(1, ...data.map(d => d.signups));
 
   const showLabel = (i: number, total: number) => {
     if (total <= 7) return true;
@@ -256,9 +188,18 @@ const CHART_RANGES = [
   { label: '30d', days: 30 },
 ] as const;
 
-function SignupChartCard() {
+function SignupChartCard({ users }: { users: AdminUserSummary[] }) {
   const [days, setDays] = useState(14);
-  const data = signupData.slice(-days);
+  const today = new Date();
+  const data = Array.from({ length: days }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (days - 1 - index));
+    const isoDate = date.toISOString().slice(0, 10);
+    return {
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      signups: users.filter(user => user.joinedAt === isoDate).length,
+    };
+  });
   const total = data.reduce((s, d) => s + d.signups, 0);
 
   return (
@@ -300,12 +241,15 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
   );
 }
 
-function Dashboard({ users }: { users: AppUser[] }) {
+function Dashboard({ users }: { users: AdminUserSummary[] }) {
   const totalUsers = users.length;
   const activeUsers = users.filter(u => u.status === 'active').length;
   const totalTrades = users.reduce((s, u) => s + u.trades, 0);
   const openIssues = initialIssues.filter(i => i.status === 'open').length;
-  const newThisWeek = signupData.slice(-7).reduce((s, d) => s + d.signups, 0);
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+  const newThisWeek = users.filter(user => new Date(user.joinedAt) >= weekAgo).length;
 
   return (
     <div className="space-y-4">
@@ -316,12 +260,20 @@ function Dashboard({ users }: { users: AppUser[] }) {
         <StatCard label="Open Issues"    value={openIssues}  sub="need attention"             icon={<AlertTriangle className="w-4 h-4" />} />
       </div>
 
-      <SignupChartCard />
+      {users.length > 0 ? <SignupChartCard users={users} /> : (
+        <div className="bg-card/30 backdrop-blur-xl rounded-xl p-4 border border-border/50">
+          <p className="text-sm font-semibold text-foreground">No accounts yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Created accounts will appear here for testing.</p>
+        </div>
+      )}
 
       <div className="bg-card/30 backdrop-blur-xl rounded-xl p-4 border border-border/50">
         <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-3">Recent Signups</p>
-        <div className="space-y-3">
-          {[...users].reverse().slice(0, 5).map(u => (
+        {users.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No user accounts have been created yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {[...users].reverse().slice(0, 5).map(u => (
             <div key={u.id} className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">{u.name}</p>
@@ -331,14 +283,15 @@ function Dashboard({ users }: { users: AppUser[] }) {
                 {u.status}
               </span>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function UsersTab({ users, setUsers }: { users: AppUser[]; setUsers: React.Dispatch<React.SetStateAction<AppUser[]>> }) {
+function UsersTab({ users, setUsers }: { users: AdminUserSummary[]; setUsers: React.Dispatch<React.SetStateAction<AdminUserSummary[]>> }) {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -349,10 +302,18 @@ function UsersTab({ users, setUsers }: { users: AppUser[]; setUsers: React.Dispa
   );
 
   const setStatus = (id: string, status: UserStatus) =>
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status } : u));
+    setUsers(prev => prev.map(u => {
+      if (u.id !== id) return u;
+      backend.updateAccountStatus(u.email, status);
+      return { ...u, status };
+    }));
 
   const deleteUser = (id: string) =>
-    setUsers(prev => prev.filter(u => u.id !== id));
+    setUsers(prev => {
+      const user = prev.find(u => u.id === id);
+      if (user) backend.deleteAccount(user.email);
+      return prev.filter(u => u.id !== id);
+    });
 
   return (
     <div className="space-y-4">
@@ -410,6 +371,7 @@ function UsersTab({ users, setUsers }: { users: AppUser[]; setUsers: React.Dispa
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{u.email}</p>
+                <p className="text-xs text-muted-foreground">Last active: {u.lastActive}</p>
                 <div className="flex gap-2">
                   {u.status !== 'active' && (
                     <button
@@ -493,7 +455,13 @@ function IssuesTab({ issues, setIssues }: { issues: Issue[]; setIssues: React.Di
       </div>
 
       <div className="space-y-2">
-        {filtered.map(issue => (
+        {filtered.length === 0 ? (
+          <div className="bg-card/30 rounded-xl border border-border/50 p-6 text-center">
+            <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm font-semibold text-foreground">No issues reported</p>
+            <p className="text-xs text-muted-foreground mt-1">User reports will appear here when they are submitted.</p>
+          </div>
+        ) : filtered.map(issue => (
           <div key={issue.id} className="bg-card/30 rounded-xl border border-border/50 overflow-hidden">
             <button
               onClick={() => setExpandedId(expandedId === issue.id ? null : issue.id)}
@@ -595,7 +563,13 @@ function ChatsModTab({ messages, setMessages }: { messages: ChatMessage[]; setMe
       <p className="text-xs text-muted-foreground">{filtered.length} message{filtered.length !== 1 ? 's' : ''}</p>
 
       <div className="space-y-2">
-        {filtered.map(msg => (
+        {filtered.length === 0 ? (
+          <div className="bg-card/30 rounded-xl border border-border/50 p-6 text-center">
+            <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm font-semibold text-foreground">No public messages yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Messages from testers will appear here for moderation.</p>
+          </div>
+        ) : filtered.map(msg => (
           <div key={msg.id} className={`rounded-xl border overflow-hidden ${msg.flagged ? 'bg-destructive/5 border-destructive/30' : 'bg-card/30 border-border/50'}`}>
             <button
               onClick={() => setExpandedId(expandedId === msg.id ? null : msg.id)}
@@ -653,9 +627,12 @@ interface AdminScreenProps {
 
 export function AdminScreen({ onLogout }: AdminScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
-  const [users, setUsers] = useState<AppUser[]>(initialUsers);
+  const [users, setUsers] = useState<AdminUserSummary[]>(() => backend.getAdminUsers());
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialChatMessages);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    const messages = loadAdminChatMessages();
+    return messages.length > 0 ? messages : initialChatMessages;
+  });
 
   const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
@@ -682,7 +659,7 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
             onClick={onLogout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground text-xs font-medium active:scale-95 transition-all"
           >
-            <LogOut className="w-3.5 h-3.5" /> Logout
+            <LogOut className="w-3.5 h-3.5" /> Log out
           </button>
         </div>
       </div>
@@ -696,15 +673,15 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
       </div>
 
       {/* Bottom navigation — mirrors BottomNavigation component pattern */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background-secondary/95 backdrop-blur-xl border-t border-border shadow-2xl z-50">
-        <div className="max-w-md mx-auto flex items-center justify-around px-1 h-16">
+      <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 bg-background-secondary/95 backdrop-blur-xl border-t border-x border-border shadow-2xl sm:rounded-t-2xl">
+        <div className="grid grid-cols-4 gap-1 px-2 h-16 items-center">
           {tabs.map(t => {
             const isActive = activeTab === t.key;
             return (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`relative flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl transition-all ${
+                className={`relative w-full h-12 flex flex-col items-center justify-center gap-1 rounded-xl transition-all ${
                   isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >

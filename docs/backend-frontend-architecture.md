@@ -1,169 +1,87 @@
-# Sticker Swap Backend + Frontend Architecture
+# StickerSwap Backend + Frontend Architecture
 
-This app uses a low-friction account model:
+This app is now designed for real user testing with an email-backed account model and Supabase as the live backend.
 
-- Username is required.
-- Email is optional at first.
-- Anonymous users can collect stickers, browse matches, and post in public chat.
-- Adding email upgrades the same `user_id` with magic link auth. A new user should not be created.
+## Account Model
 
-## Frontend State
+- Users create an account with name, email, and password.
+- Duplicate emails are not allowed.
+- Password recovery starts from the Log in screen.
+- The security question is stored for account recovery context, but the safest production reset path is still Supabase email recovery or a small Supabase Edge Function.
+- Location is optional and can be turned on or off from Location Settings.
+- New users start with every sticker set to Missing.
 
-`src/app/lib/backend.ts` is the prototype backend adapter. It stores the same entities in `localStorage` that Supabase will store later:
+## Current Local Preview
 
-- `stickerswap.currentUser`
-- `stickerswap.userStickers`
-- `stickerswap.conversations`
-- `stickerswap.publicMessages`
-- `stickerswap.analyticsEvents`
+The local preview still works without Supabase credentials. It stores data in the browser so you can keep testing UX quickly:
 
-First open flow:
+- current user
+- sticker statuses
+- private and public chats
+- notification preferences
+- privacy settings
+- admin user/activity data
 
-1. User enters username.
-2. App creates an anonymous user with UUID.
-3. User is sent into location permission and then the app.
-4. Email is requested only when useful.
+## Supabase Files
 
-Upgrade prompts fire when:
+- `supabase/schema.sql` creates the live database tables, security policies, matching functions, chat functions, analytics, notification preferences, and realtime setup.
+- `supabase/seed_stickers.sql` inserts all 992 stickers from the app checklist in album order.
+- `.env.example` shows the values needed to connect the app to a Supabase project.
 
-- collected stickers exceed 20
-- duplicate total exceeds 5
-- user tries to send a private message
+## Tables
 
-Chat rules:
+- `profiles`: user profile, email, status, location, privacy, recovery question metadata
+- `stickers`: Panini checklist source of truth
+- `user_stickers`: each user’s owned, missing, and duplicate count
+- `messages`: private chat
+- `public_messages`: Kansas City community room
+- `analytics_events`: admin/activity tracking
+- `notification_preferences`: push notification settings
 
-- Public chat is available for all users.
-- Private chat is blocked until `email !== null`.
-- Email upgrade preserves the same local/Supabase `user_id`.
+## Sticker Rules
 
-## Supabase API Calls
+- Missing is the default for every sticker.
+- Owned means the user has at least one physical copy.
+- Duplicate means the user owns the sticker and has extras available to trade.
+- Supabase enforces that a duplicate cannot exist unless the sticker is owned.
+- Owned and Missing cannot both be true.
 
-Create anonymous user:
+## Matching
 
-```ts
-await supabase.rpc('create_anonymous_user', {
-  p_id: localUserId,
-  p_username: username,
-  p_latitude: latitude,
-  p_longitude: longitude,
-});
-```
+`find_matches()` returns collectors sorted by useful trade overlap:
 
-Add email / upgrade account:
+- Matches: stickers I need that they have as duplicates.
+- You Need: my full missing list.
+- They Need: their full missing list.
+- Score: percent of my missing list they can help with.
+- Location: if both users allow location, the function filters by radius; otherwise it stays in the Kansas City MVP market.
 
-```ts
-await supabase.auth.signInWithOtp({ email });
-await supabase.rpc('add_email_to_user', {
-  p_user_id: localUserId,
-  p_email: email,
-});
-```
+## Chat
 
-Add sticker:
+- Public room: Kansas City Community.
+- Private messages: sender and receiver only.
+- Realtime is enabled for private and public messages.
 
-```ts
-await supabase.rpc('upsert_user_sticker', {
-  p_user_id: userId,
-  p_sticker_id: 'MEX_12',
-  p_quantity: 1,
-  p_is_needed: false,
-});
-```
+## Security
 
-Add duplicate:
+Supabase RLS policies enforce:
 
-```ts
-await supabase.rpc('upsert_user_sticker', {
-  p_user_id: userId,
-  p_sticker_id: 'MEX_12',
-  p_quantity: 2,
-  p_is_needed: false,
-});
-```
+- users can update only their own profile
+- users can read and edit only their own sticker collection
+- messages are visible only to sender and receiver
+- public room messages are visible to authenticated users
+- notification settings are visible/editable only by the current user
 
-Find matches:
+## Setup Steps
 
-```ts
-await supabase.rpc('find_matches', {
-  p_user_id: userId,
-  p_radius_km: 50,
-  p_limit: 20,
-});
-```
+1. Create a Supabase project.
+2. Open SQL Editor.
+3. Run `supabase/schema.sql`.
+4. Run `supabase/seed_stickers.sql`.
+5. Copy `.env.example` to `.env`.
+6. Add your Supabase Project URL and anon key.
+7. Change `VITE_BACKEND_MODE=local` to `VITE_BACKEND_MODE=supabase` when we are ready to switch the app from local preview storage to live Supabase data.
 
-Send private message:
+## Important Launch Note
 
-```ts
-await supabase.rpc('send_private_message', {
-  p_sender_id: userId,
-  p_receiver_id: receiverId,
-  p_message_text: message,
-});
-```
-
-Send public message:
-
-```ts
-await supabase.rpc('send_public_message', {
-  p_user_id: userId,
-  p_message_text: message,
-});
-```
-
-## Realtime Subscriptions
-
-Private messages:
-
-```ts
-supabase
-  .channel(`private_messages:${userId}`)
-  .on(
-    'postgres_changes',
-    {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'messages',
-      filter: `receiver_id=eq.${userId}`,
-    },
-    (payload) => {
-      // append message to private conversation
-    }
-  )
-  .subscribe();
-```
-
-Public messages:
-
-```ts
-supabase
-  .channel('public_messages')
-  .on(
-    'postgres_changes',
-    {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'public_messages',
-    },
-    (payload) => {
-      // append message to public room
-    }
-  )
-  .subscribe();
-```
-
-## Analytics Events
-
-Track these events in `analytics_events`:
-
-- `app_open`
-- `username_created`
-- `sticker_added`
-- `duplicate_added`
-- `collection_progress`
-- `nearby_users_found`
-- `match_found`
-- `chat_attempted`
-- `chat_unlocked`
-- `message_sent`
-- `email_added`
-
+The database is ready for live data. The app still needs the final adapter switch after the Supabase URL and anon key exist. Keeping `VITE_BACKEND_MODE=local` protects the current preview while setup is incomplete.

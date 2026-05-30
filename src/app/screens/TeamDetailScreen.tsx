@@ -1,11 +1,12 @@
 import { StickerCard } from '../components/StickerCard';
 import { SearchBar } from '../components/SearchBar';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { ChevronLeft, Award, Users } from 'lucide-react';
+import { ChevronLeft, Check } from 'lucide-react';
 import { useState } from 'react';
 import { getTeamByCode } from '../data/teams';
 import { getPlayersByTeam } from '../data/players';
 import { getTeamColors } from '../data/teamColors';
+import { StickerStatus } from '../lib/stickerState';
 
 interface Sticker {
   code: string;
@@ -26,6 +27,9 @@ interface TeamDetailScreenProps {
 export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, onUpdateSticker, onDeleteSticker }: TeamDetailScreenProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
+  const [pendingAction, setPendingAction] = useState<StickerStatus | null>(null);
 
   const team = getTeamByCode(teamCode);
   const teamPlayers = getPlayersByTeam(teamCode);
@@ -37,7 +41,7 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
     return {
       code: player.code,
       owned: existingSticker?.owned || false,
-      missing: existingSticker?.missing || false,
+      missing: existingSticker ? existingSticker.missing : true,
       duplicateCount: existingSticker?.duplicateCount || 0,
       playerName: player.name,
     };
@@ -52,7 +56,7 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
       // Create new sticker if it doesn't exist
       const newSticker: Partial<Sticker> = {
         code,
-        owned: newStatus === 'owned',
+        owned: newStatus === 'owned' || newStatus === 'duplicate',
         missing: newStatus === 'missing',
         duplicateCount: newStatus === 'duplicate' ? 1 : 0,
       };
@@ -60,25 +64,51 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
     } else {
       // Update existing sticker
       if (newStatus === 'owned') {
-        onUpdateSticker(code, { owned: true, missing: false });
+        onUpdateSticker(code, { owned: true, missing: false, duplicateCount: 0 });
       } else if (newStatus === 'missing') {
         onUpdateSticker(code, { missing: true, owned: false, duplicateCount: 0 });
       } else if (newStatus === 'duplicate') {
-        onUpdateSticker(code, { duplicateCount: Math.max(1, existingSticker.duplicateCount), missing: false });
+        onUpdateSticker(code, { owned: true, duplicateCount: Math.max(1, existingSticker.duplicateCount), missing: false });
       }
     }
   };
 
   const handleDuplicateCountChange = (code: string, newCount: number) => {
-    onUpdateSticker(code, { duplicateCount: newCount });
+    onUpdateSticker(code, { owned: newCount > 0, missing: false, duplicateCount: newCount });
   };
 
   const handleDelete = (code: string) => {
-    onDeleteSticker(code);
+    onUpdateSticker(code, { owned: false, missing: true, duplicateCount: 0 });
+  };
+
+  const toggleCode = (code: string) => {
+    setSelectedCodes(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+
+  const cancelSelecting = () => {
+    setIsSelecting(false);
+    setSelectedCodes(new Set());
+    setPendingAction(null);
+  };
+
+  const selectAll = () => {
+    setSelectedCodes(new Set(filteredStickers.map(sticker => sticker.code)));
+  };
+
+  const confirmBulkAction = () => {
+    if (!pendingAction || selectedCodes.size === 0) return;
+    selectedCodes.forEach(code => handleStatusChange(code, pendingAction));
+    cancelSelecting();
   };
 
   const filteredStickers = displayStickers.filter(s => {
     // Filter by status
+    if (filter === 'owned' && !s.owned) return false;
     if (filter === 'missing' && !s.missing) return false;
     if (filter === 'duplicate' && s.duplicateCount === 0) return false;
 
@@ -89,6 +119,7 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
   });
 
   const stats = {
+    collected: displayStickers.filter(s => s.owned || s.duplicateCount > 0).length,
     owned: displayStickers.filter(s => s.owned).length,
     missing: displayStickers.filter(s => s.missing).length,
     duplicates: displayStickers.filter(s => s.duplicateCount > 0).length,
@@ -96,11 +127,11 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
 
   const totalStickers = team.total || 20;
   const completionPercent = displayStickers.length > 0
-    ? Math.round((stats.owned / totalStickers) * 100)
+    ? Math.round((stats.collected / totalStickers) * 100)
     : 0;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className={`min-h-screen bg-background ${isSelecting ? 'pb-40' : 'pb-20'}`}>
       <div className="px-4 pt-6 pb-4">
         <button
           onClick={onBack}
@@ -161,8 +192,9 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
           <SegmentedControl
             options={[
               { value: 'all', label: 'All' },
+              { value: 'owned', label: 'Owned' },
               { value: 'missing', label: 'Missing' },
-              { value: 'duplicate', label: 'Duplicates' },
+              { value: 'duplicate', label: 'Dupes' },
             ]}
             value={filter}
             onChange={setFilter}
@@ -170,26 +202,154 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
         </div>
 
         <div className="mb-2">
-          <h3>
-            {filter === 'all' && `All Stickers (${filteredStickers.length})`}
-            {filter === 'missing' && `Missing (${filteredStickers.length})`}
-            {filter === 'duplicate' && `Duplicates (${filteredStickers.length})`}
-          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3>
+              {filter === 'all' && `All Stickers (${filteredStickers.length})`}
+              {filter === 'owned' && `Owned (${filteredStickers.length})`}
+              {filter === 'missing' && `Missing (${filteredStickers.length})`}
+              {filter === 'duplicate' && `Dupes (${filteredStickers.length})`}
+            </h3>
+            {!isSelecting && filteredStickers.length > 0 && (filter === 'missing' || filter === 'duplicate') && (
+              <button
+                onClick={() => setIsSelecting(true)}
+                className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+              >
+                Select
+              </button>
+            )}
+            {isSelecting && (
+              <button
+                onClick={cancelSelecting}
+                className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
+
+        {isSelecting && (
+          <div className="mb-4 px-3 py-2 rounded-xl bg-card/40 border border-border/50">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-foreground">{selectedCodes.size} selected</p>
+              <div className="flex items-center gap-3">
+                <button onClick={selectAll} className="text-sm font-bold text-primary">Select all</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2 pb-4">
           {filteredStickers.map((sticker) => (
-            <StickerCard
-              key={sticker.code}
-              {...sticker}
-              onClick={() => onStickerClick(sticker.code)}
-              onStatusChange={(newStatus) => handleStatusChange(sticker.code, newStatus)}
-              onDuplicateCountChange={(newCount) => handleDuplicateCountChange(sticker.code, newCount)}
-              onDelete={() => handleDelete(sticker.code)}
-            />
+            isSelecting ? (
+              <button
+                key={sticker.code}
+                onClick={() => toggleCode(sticker.code)}
+                className={`w-full flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-all active:scale-[0.99] ${
+                  selectedCodes.has(sticker.code)
+                    ? 'border-primary bg-primary/10 shadow-lg shadow-primary/10'
+                    : 'border-border/50'
+                }`}
+              >
+                <span className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 ${
+                  selectedCodes.has(sticker.code)
+                    ? 'bg-primary border-primary text-primary-foreground'
+                    : 'border-border bg-background/60'
+                }`}>
+                  {selectedCodes.has(sticker.code) && <Check className="w-4 h-4" />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-bold text-foreground">{sticker.code}</span>
+                  <span className="block text-xs text-muted-foreground truncate">{sticker.playerName}</span>
+                </span>
+                {sticker.duplicateCount > 0 && (
+                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+                    x{sticker.duplicateCount}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <StickerCard
+                key={sticker.code}
+                {...sticker}
+                onClick={() => onStickerClick(sticker.code)}
+                onStatusChange={(newStatus) => handleStatusChange(sticker.code, newStatus)}
+                onDuplicateCountChange={(newCount) => handleDuplicateCountChange(sticker.code, newCount)}
+                onDelete={() => handleDelete(sticker.code)}
+              />
+            )
           ))}
         </div>
       </div>
+
+      {isSelecting && (
+        <div className="fixed left-1/2 bottom-0 z-[70] w-full max-w-md -translate-x-1/2 pointer-events-none">
+          <div className="pointer-events-auto bg-background-secondary/95 backdrop-blur-xl border-t border-x border-border/70 shadow-2xl p-3 pb-4 sm:rounded-t-2xl">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-xs font-semibold text-muted-foreground">{selectedCodes.size} selected</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                disabled={selectedCodes.size === 0}
+                onClick={() => setPendingAction('owned')}
+                className="h-10 rounded-xl bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 active:scale-95 transition-all shadow-lg shadow-primary/20"
+              >
+                Mark owned
+              </button>
+              {filter === 'missing' ? (
+                <button
+                  disabled={selectedCodes.size === 0}
+                  onClick={() => setPendingAction('duplicate')}
+                  className="h-10 rounded-xl bg-card/50 border border-border/50 text-foreground text-sm font-bold disabled:opacity-40 active:scale-95 transition-all"
+                >
+                  Mark duplicate
+                </button>
+              ) : (
+                <button
+                  disabled={selectedCodes.size === 0}
+                  onClick={() => setPendingAction('missing')}
+                  className="h-10 rounded-xl bg-card/50 border border-border/50 text-foreground text-sm font-bold disabled:opacity-40 active:scale-95 transition-all"
+                >
+                  Mark missing
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingAction && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[80] px-4 sm:pb-6" onClick={() => setPendingAction(null)}>
+          <div
+            className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-6 border border-border/50 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1 rounded-full bg-muted mx-auto mb-5" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Update {selectedCodes.size} stickers?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              {pendingAction === 'duplicate'
+                ? 'This will mark the selected stickers as owned and add one duplicate to each.'
+                : pendingAction === 'owned'
+                  ? 'This will remove missing or duplicate status and keep these stickers as owned.'
+                  : 'This will remove owned and duplicate counts, then move these stickers back to missing.'}
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={confirmBulkAction}
+                className="w-full h-14 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setPendingAction(null)}
+                className="w-full h-12 rounded-xl bg-card/40 border border-border/50 text-foreground font-bold active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

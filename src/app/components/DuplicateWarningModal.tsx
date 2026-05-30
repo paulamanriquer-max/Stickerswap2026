@@ -74,9 +74,9 @@ export function DuplicateWarningModal({
   const content = getModalContent();
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end z-[60]" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[80] px-4 sm:pb-6" onClick={onClose}>
       <div
-        className="w-full bg-background rounded-t-3xl p-6 border-t border-border/50"
+        className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-6 border border-border/50 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">

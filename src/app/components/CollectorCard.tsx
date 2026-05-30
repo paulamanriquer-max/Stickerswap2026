@@ -4,23 +4,19 @@ import { MatchScoreBadge } from './MatchScoreBadge';
 
 interface CollectorCardProps {
   username: string;
-  distance: string;
   matchScore: number;
   theyHaveYouNeed: number;
   youHaveTheyNeed: number;
   onClick?: () => void;
-  locationEnabled: boolean;
   city: string;
 }
 
 export function CollectorCard({
   username,
-  distance,
   matchScore,
   theyHaveYouNeed,
   youHaveTheyNeed,
   onClick,
-  locationEnabled,
   city,
 }: CollectorCardProps) {
   return (
@@ -36,7 +32,7 @@ export function CollectorCard({
             </div>
             <div className="text-left min-w-0">
               <h3 className="font-semibold text-foreground text-sm truncate">{username}</h3>
-              <DistanceBadge distance={locationEnabled ? distance : city} />
+              <DistanceBadge distance={city} />
             </div>
           </div>
           <MatchScoreBadge score={matchScore} />

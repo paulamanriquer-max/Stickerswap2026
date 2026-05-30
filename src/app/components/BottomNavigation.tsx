@@ -16,13 +16,13 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background-secondary/95 backdrop-blur-xl border-t border-border safe-area-bottom shadow-2xl z-50">
-      <div className="max-w-md mx-auto flex items-center justify-around px-1 h-16">
+    <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 bg-background-secondary/95 backdrop-blur-xl border-t border-x border-border safe-area-bottom shadow-2xl sm:rounded-t-2xl">
+      <div className="grid grid-cols-4 gap-1 px-2 h-16 items-center">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => onTabChange(id)}
-            className={`relative flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl transition-all ${
+            className={`relative w-full h-12 flex flex-col items-center justify-center gap-1 rounded-xl transition-all ${
               activeTab === id
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'

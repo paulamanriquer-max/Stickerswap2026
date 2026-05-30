@@ -1,15 +1,23 @@
 import { ArrowLeft, MapPin, Navigation } from 'lucide-react';
-import { useState } from 'react';
+import { AppUser } from '../lib/backend';
 import { Toggle } from '../components/Toggle';
 
 interface LocationSettingsScreenProps {
   onBack?: () => void;
-  locationEnabled: boolean;
-  onLocationChange: (enabled: boolean) => void;
+  city?: string;
+  user?: AppUser | null;
+  onEnableLocation: () => void;
+  onDisableLocation: () => void;
 }
 
-export function LocationSettingsScreen({ onBack, locationEnabled, onLocationChange }: LocationSettingsScreenProps) {
-  const [radius, setRadius] = useState(5);
+export function LocationSettingsScreen({
+  onBack,
+  city = 'Kansas City',
+  user,
+  onEnableLocation,
+  onDisableLocation,
+}: LocationSettingsScreenProps) {
+  const locationEnabled = Boolean(user?.latitude && user?.longitude);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -24,46 +32,40 @@ export function LocationSettingsScreen({ onBack, locationEnabled, onLocationChan
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground mb-1">Location Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage how we use your location</p>
+          <p className="text-sm text-muted-foreground">Control how StickerSwap uses location for nearby trades</p>
         </div>
 
         <div className="space-y-4">
           <div className="bg-card/30 backdrop-blur-xl rounded-xl border border-border/50 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-primary" />
-                <div>
-                  <h3 className="font-semibold text-foreground">Enable Location</h3>
-                  <p className="text-xs text-muted-foreground">Find nearby collectors</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <MapPin className="w-5 h-5 text-primary" />
+              <div>
+                <h3 className="font-semibold text-foreground">Trading Market</h3>
+                <p className="text-xs text-muted-foreground">{city}</p>
               </div>
-              <Toggle enabled={locationEnabled} onChange={() => onLocationChange(!locationEnabled)} />
             </div>
           </div>
 
           <div className="bg-card/30 backdrop-blur-xl rounded-xl border border-border/50 p-4">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3">
               <Navigation className="w-5 h-5 text-primary" />
-              <div>
-                <h3 className="font-semibold text-foreground">Search Radius</h3>
-                <p className="text-xs text-muted-foreground">Maximum distance to find collectors</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-foreground">Location Matching</h3>
+                <p className="text-xs text-muted-foreground">
+                  {locationEnabled
+                    ? 'On. Nearby matches can use your current location.'
+                    : 'Off. You will still be shown in the Kansas City market.'}
+                </p>
               </div>
+              <Toggle enabled={locationEnabled} onChange={locationEnabled ? onDisableLocation : onEnableLocation} />
             </div>
-            <div className="space-y-2">
-              <input
-                type="range"
-                min="1"
-                max="50"
-                value={radius}
-                onChange={(e) => setRadius(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">1 mi</span>
-                <span className="font-bold text-primary">{radius} mi</span>
-                <span className="text-muted-foreground">50 mi</span>
-              </div>
-            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-card/30 p-4">
+            <h3 className="font-semibold text-foreground">How this works</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Your phone or browser will ask for permission before sharing location. You can also revoke access from device settings at any time.
+            </p>
           </div>
         </div>
       </div>

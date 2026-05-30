@@ -1,9 +1,11 @@
 import { TeamCard } from '../components/TeamCard';
 import { SearchBar } from '../components/SearchBar';
-import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { StickerCard } from '../components/StickerCard';
+import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle, Check } from 'lucide-react';
 import { useState } from 'react';
 import { worldCupTeams } from '../data/teams';
 import { getPlayerByCode, getPlayersByTeam } from '../data/players';
+import { StickerStatus } from '../lib/stickerState';
 
 interface Sticker {
   code: string;
@@ -16,13 +18,35 @@ interface MyAlbumScreenProps {
   onTeamClick: (teamCode: string) => void;
   onAddSticker: () => void;
   stickers: Sticker[];
+  onBulkUpdate: (codes: string[], status: StickerStatus) => void;
+  onUpdateSticker: (code: string, updates: Partial<Sticker>) => void;
 }
 
 type Subpage = 'owned' | 'missing' | 'duplicates' | null;
+type BulkAction = 'owned' | 'duplicate' | 'missing';
 
-function StickerGroup({ teamCode, stickers }: { teamCode: string; stickers: Sticker[] }) {
+function StickerGroup({
+  teamCode,
+  stickers,
+  selectable,
+  selectedCodes,
+  onToggle,
+  onStatusChange,
+  onDuplicateCountChange,
+  onDelete,
+}: {
+  teamCode: string;
+  stickers: Sticker[];
+  selectable: boolean;
+  selectedCodes: Set<string>;
+  onToggle: (code: string) => void;
+  onStatusChange?: (code: string, status: StickerStatus) => void;
+  onDuplicateCountChange?: (code: string, count: number) => void;
+  onDelete?: (code: string) => void;
+}) {
   const team = worldCupTeams.find(t => t.code === teamCode);
   if (!team || stickers.length === 0) return null;
+
   return (
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-2">
@@ -30,19 +54,45 @@ function StickerGroup({ teamCode, stickers }: { teamCode: string; stickers: Stic
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{team.name}</span>
         <span className="text-xs text-muted-foreground ml-auto">{stickers.length}</span>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="space-y-2">
         {stickers.map(s => (
-          <div
-            key={s.code}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-card/40 border border-border/50 rounded-lg"
-          >
-            <span className="text-xs font-bold text-foreground">{s.code}</span>
-            {s.duplicateCount > 1 && (
-              <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                x{s.duplicateCount}
+          selectable ? (
+            <button
+              key={s.code}
+              onClick={() => onToggle(s.code)}
+              className={`w-full flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-all active:scale-[0.99] ${
+                selectedCodes.has(s.code)
+                  ? 'border-primary bg-primary/10 shadow-lg shadow-primary/10'
+                  : 'border-border/50'
+              }`}
+            >
+              <span className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 ${
+                selectedCodes.has(s.code)
+                  ? 'bg-primary border-primary text-primary-foreground'
+                  : 'border-border bg-background/60'
+              }`}>
+                {selectedCodes.has(s.code) && <Check className="w-4 h-4" />}
               </span>
-            )}
-          </div>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold text-foreground">{s.code}</span>
+                <span className="block text-xs text-muted-foreground truncate">{getPlayerByCode(s.code)?.name || 'Sticker'}</span>
+              </span>
+              {s.duplicateCount > 0 && (
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+                  x{s.duplicateCount}
+                </span>
+              )}
+            </button>
+          ) : (
+            <StickerCard
+              key={s.code}
+              {...s}
+              playerName={getPlayerByCode(s.code)?.name || 'Sticker'}
+              onStatusChange={(status) => onStatusChange?.(s.code, status)}
+              onDuplicateCountChange={(count) => onDuplicateCountChange?.(s.code, count)}
+              onDelete={() => onDelete?.(s.code)}
+            />
+          )
         ))}
       </div>
     </div>
@@ -59,25 +109,90 @@ function SubpageView({
   stickers,
   subpage,
   onBack,
+  onBulkUpdate,
+  onUpdateSticker,
 }: {
   title: string;
   icon: React.ReactNode;
   stickers: Sticker[];
   subpage: Subpage;
   onBack: () => void;
+  onBulkUpdate: (codes: string[], status: StickerStatus) => void;
+  onUpdateSticker: (code: string, updates: Partial<Sticker>) => void;
 }) {
   const [search, setSearch] = useState('');
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
+  const [pendingAction, setPendingAction] = useState<BulkAction | null>(null);
 
   const filtered = stickers.filter(s =>
-    s.code.toLowerCase().includes(search.toLowerCase())
+    s.code.toLowerCase().includes(search.toLowerCase()) ||
+    (getPlayerByCode(s.code)?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const teamCodes = worldCupTeams
     .map(team => team.code)
     .filter(code => filtered.some(sticker => getStickerSectionCode(sticker.code) === code));
+  const bulkEnabled = subpage === 'missing' || subpage === 'duplicates';
+  const selectedCount = selectedCodes.size;
+  const actionLabel = pendingAction === 'owned'
+    ? 'mark as owned'
+    : pendingAction === 'duplicate'
+      ? 'mark as duplicates'
+      : 'mark as missing';
+  const actionDescription = pendingAction === 'duplicate'
+    ? 'This will mark the selected stickers as owned and add one duplicate to each.'
+    : pendingAction === 'owned'
+      ? 'This will remove missing or duplicate status and keep these stickers as owned.'
+      : 'This will remove owned and duplicate counts, then move these stickers back to missing.';
+
+  const toggleCode = (code: string) => {
+    setSelectedCodes(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+
+  const startSelecting = () => {
+    setIsSelecting(true);
+    setSelectedCodes(new Set());
+  };
+
+  const cancelSelecting = () => {
+    setIsSelecting(false);
+    setSelectedCodes(new Set());
+    setPendingAction(null);
+  };
+
+  const selectAll = () => {
+    setSelectedCodes(new Set(filtered.map(sticker => sticker.code)));
+  };
+
+  const confirmBulkAction = () => {
+    if (!pendingAction || selectedCodes.size === 0) return;
+    onBulkUpdate(Array.from(selectedCodes), pendingAction);
+    cancelSelecting();
+  };
+
+  const handleStatusChange = (code: string, status: StickerStatus) => {
+    const current = stickers.find(sticker => sticker.code === code);
+    if (status === 'owned') {
+      onUpdateSticker(code, { owned: true, missing: false, duplicateCount: 0 });
+    } else if (status === 'missing') {
+      onUpdateSticker(code, { owned: false, missing: true, duplicateCount: 0 });
+    } else {
+      onUpdateSticker(code, { owned: true, missing: false, duplicateCount: Math.max(1, current?.duplicateCount || 1) });
+    }
+  };
+
+  const handleDuplicateCountChange = (code: string, count: number) => {
+    onUpdateSticker(code, { owned: count > 0, missing: false, duplicateCount: count });
+  };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className={`min-h-screen bg-background ${isSelecting ? 'pb-40' : 'pb-20'}`}>
       <div className="px-4 pt-6 pb-4">
         <button
           onClick={onBack}
@@ -87,15 +202,47 @@ function SubpageView({
           <span className="text-sm font-medium">My Album</span>
         </button>
 
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
             {icon}
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
             <p className="text-xs text-muted-foreground">{stickers.length} sticker{stickers.length !== 1 ? 's' : ''}</p>
           </div>
+          {bulkEnabled && !isSelecting && stickers.length > 0 && (
+            <button
+              onClick={startSelecting}
+              className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+            >
+              Select
+            </button>
+          )}
+          {bulkEnabled && isSelecting && (
+            <button
+              onClick={cancelSelecting}
+              className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+            >
+              Cancel
+            </button>
+          )}
         </div>
+
+        {bulkEnabled && isSelecting && (
+          <div className="mb-4 px-3 py-2 rounded-xl bg-card/40 border border-border/50">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-foreground">{selectedCount} selected</p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={selectAll}
+                  className="text-sm font-bold text-primary"
+                >
+                  Select all
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <SearchBar
           value={search}
@@ -120,35 +267,99 @@ function SubpageView({
               key={code}
               teamCode={code}
               stickers={filtered.filter(s => getStickerSectionCode(s.code) === code)}
+              selectable={isSelecting}
+              selectedCodes={selectedCodes}
+              onToggle={toggleCode}
+              onStatusChange={handleStatusChange}
+              onDuplicateCountChange={handleDuplicateCountChange}
+              onDelete={(code) => onUpdateSticker(code, { owned: false, missing: true, duplicateCount: 0 })}
             />
           ))
         )}
       </div>
+
+      {bulkEnabled && isSelecting && (
+        <div className="fixed left-1/2 bottom-0 z-[70] w-full max-w-md -translate-x-1/2 pointer-events-none">
+          <div className="pointer-events-auto bg-background-secondary/95 backdrop-blur-xl border-t border-x border-border/70 shadow-2xl p-3 pb-4 sm:rounded-t-2xl">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-xs font-semibold text-muted-foreground">
+                {selectedCount} selected
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                disabled={selectedCount === 0}
+                onClick={() => setPendingAction('owned')}
+                className="h-10 rounded-xl bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 active:scale-95 transition-all shadow-lg shadow-primary/20"
+              >
+                Mark owned
+              </button>
+              <button
+                disabled={selectedCount === 0}
+                onClick={() => setPendingAction(subpage === 'duplicates' ? 'missing' : 'duplicate')}
+                className="h-10 rounded-xl bg-card/50 border border-border/50 text-foreground text-sm font-bold disabled:opacity-40 active:scale-95 transition-all"
+              >
+                {subpage === 'duplicates' ? 'Mark missing' : 'Mark duplicate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingAction && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[80] px-4 sm:pb-6" onClick={() => setPendingAction(null)}>
+          <div
+            className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-6 border border-border/50 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1 rounded-full bg-muted mx-auto mb-5" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Update {selectedCount} stickers?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              This will {actionLabel}. {actionDescription}
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={confirmBulkAction}
+                className="w-full h-14 rounded-xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setPendingAction(null)}
+                className="w-full h-12 rounded-xl bg-card/40 border border-border/50 text-foreground font-bold active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export function MyAlbumScreen({ onTeamClick, onAddSticker, stickers }: MyAlbumScreenProps) {
+export function MyAlbumScreen({ onTeamClick, onAddSticker, stickers, onBulkUpdate, onUpdateSticker }: MyAlbumScreenProps) {
   const [search, setSearch] = useState('');
   const [activeSubpage, setActiveSubpage] = useState<Subpage>(null);
 
   const teamsWithStats = worldCupTeams.map(team => {
     const sectionStickerCodes = new Set(getPlayersByTeam(team.code).map(player => player.code));
     const teamStickers = stickers.filter(s => sectionStickerCodes.has(s.code));
-    const owned = teamStickers.filter(s => s.owned).length;
+    const owned = teamStickers.filter(s => s.owned || s.duplicateCount > 0).length;
     const missing = teamStickers.filter(s => s.missing).length;
     const duplicates = teamStickers.filter(s => s.duplicateCount > 0).reduce((sum, s) => sum + s.duplicateCount, 0);
     return { ...team, owned, missing, duplicates };
   });
 
   const stats = {
+    collected: stickers.filter(s => s.owned || s.duplicateCount > 0).length,
     owned: stickers.filter(s => s.owned).length,
     missing: stickers.filter(s => s.missing).length,
     duplicates: stickers.reduce((sum, s) => sum + s.duplicateCount, 0),
     total: worldCupTeams.reduce((sum, t) => sum + t.total, 0),
   };
 
-  const completionPercent = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
+  const completionPercent = stats.total > 0 ? Math.round((stats.collected / stats.total) * 100) : 0;
 
   const filteredTeams = teamsWithStats.filter(team =>
     team.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -167,6 +378,8 @@ export function MyAlbumScreen({ onTeamClick, onAddSticker, stickers }: MyAlbumSc
         stickers={ownedStickers}
         subpage="owned"
         onBack={() => setActiveSubpage(null)}
+        onBulkUpdate={onBulkUpdate}
+        onUpdateSticker={onUpdateSticker}
       />
     );
   }
@@ -179,6 +392,8 @@ export function MyAlbumScreen({ onTeamClick, onAddSticker, stickers }: MyAlbumSc
         stickers={missingStickers}
         subpage="missing"
         onBack={() => setActiveSubpage(null)}
+        onBulkUpdate={onBulkUpdate}
+        onUpdateSticker={onUpdateSticker}
       />
     );
   }
@@ -191,6 +406,8 @@ export function MyAlbumScreen({ onTeamClick, onAddSticker, stickers }: MyAlbumSc
         stickers={duplicateStickers}
         subpage="duplicates"
         onBack={() => setActiveSubpage(null)}
+        onBulkUpdate={onBulkUpdate}
+        onUpdateSticker={onUpdateSticker}
       />
     );
   }

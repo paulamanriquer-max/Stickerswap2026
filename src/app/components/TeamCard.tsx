@@ -1,4 +1,4 @@
-import { ChevronRight, TrendingUp } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface TeamCardProps {
   name: string;
@@ -32,9 +32,9 @@ export function TeamCard({ name, code, flag, owned, missing, duplicates, total, 
               style={{ width: `${completionPercent}%` }}
             />
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            {owned}/{total}
-            {duplicates > 0 && <span className="text-info ml-2">• {duplicates} dupes</span>}
+          <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
+            <span>{owned}/{total}</span>
+            {duplicates > 0 && <span className="text-info font-semibold">{duplicates} dupes</span>}
           </div>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />

@@ -1,4 +1,4 @@
-import { MoreVertical, Trash2, Plus, Minus } from 'lucide-react';
+import { MoreVertical, Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
 
 type StickerStatus = 'owned' | 'missing' | 'duplicate';
@@ -115,6 +115,11 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
           >
             <div className="font-bold text-foreground text-sm">{code}</div>
             <div className="text-sm text-muted-foreground mt-0.5 truncate">{playerName}</div>
+            {!readOnly && duplicateCount > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Owned + {duplicateCount} extra{duplicateCount !== 1 ? 's' : ''} available to trade
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {getStatusLabels()}
@@ -133,9 +138,9 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
 
       {/* Action Sheet */}
       {showActionSheet && (
-        <div className="fixed inset-0 bg-black/50 flex items-end z-50" onClick={closeActionSheet}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[80] px-4 sm:pb-6" onClick={closeActionSheet}>
           <div
-            className="w-full bg-background rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto border-t border-border/50"
+            className="w-full max-w-md bg-background rounded-t-3xl sm:rounded-3xl p-6 max-h-[80vh] overflow-y-auto border border-border/50 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -179,17 +184,17 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
               {hasStatus && status === 'owned' && !duplicateCount && (
                 <>
                   <button
+                    onClick={() => handleAction('duplicate')}
+                    className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
+                  >
+                    <span className="font-semibold text-foreground">Add Duplicate</span>
+                    <span className="block text-xs text-muted-foreground mt-1">Keeps this sticker owned and adds one duplicate.</span>
+                  </button>
+                  <button
                     onClick={() => handleAction('missing')}
                     className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
                   >
                     <span className="font-semibold text-foreground">Mark as Missing</span>
-                  </button>
-                  <button
-                    onClick={() => handleAction('delete')}
-                    className="w-full p-4 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/30 transition-all active:scale-95 text-left flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                    <span className="font-semibold text-destructive">Delete</span>
                   </button>
                 </>
               )}
@@ -197,7 +202,8 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
               {hasStatus && owned && duplicateCount > 0 && (
                 <>
                   <div className="p-4 bg-muted/30 rounded-xl border border-border/50">
-                    <label className="block text-sm font-semibold text-foreground mb-3">Duplicate Count</label>
+                    <label className="block text-sm font-semibold text-foreground">Duplicate Count</label>
+                    <p className="text-xs text-muted-foreground mt-1 mb-3">You own this sticker and have extras available to trade.</p>
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => handleAction('decrement')}
@@ -221,13 +227,6 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                   >
                     <span className="font-semibold text-foreground">Mark as Missing</span>
                   </button>
-                  <button
-                    onClick={() => handleAction('delete')}
-                    className="w-full p-4 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/30 transition-all active:scale-95 text-left flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                    <span className="font-semibold text-destructive">Delete</span>
-                  </button>
                 </>
               )}
 
@@ -243,14 +242,8 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                     onClick={() => handleAction('duplicate')}
                     className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
                   >
-                    <span className="font-semibold text-foreground">Mark as Duplicate</span>
-                  </button>
-                  <button
-                    onClick={() => handleAction('delete')}
-                    className="w-full p-4 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/30 transition-all active:scale-95 text-left flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                    <span className="font-semibold text-destructive">Delete</span>
+                    <span className="font-semibold text-foreground">Mark Owned + Duplicate</span>
+                    <span className="block text-xs text-muted-foreground mt-1">A duplicate can only exist after the sticker is owned.</span>
                   </button>
                 </>
               )}
@@ -287,13 +280,6 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                     className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
                   >
                     <span className="font-semibold text-foreground">Mark as Missing</span>
-                  </button>
-                  <button
-                    onClick={() => handleAction('delete')}
-                    className="w-full p-4 bg-destructive/10 hover:bg-destructive/20 rounded-xl border border-destructive/30 transition-all active:scale-95 text-left flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                    <span className="font-semibold text-destructive">Delete</span>
                   </button>
                 </>
               )}

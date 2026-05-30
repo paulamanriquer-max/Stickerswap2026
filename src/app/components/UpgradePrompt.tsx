@@ -14,8 +14,8 @@ export function UpgradePrompt({
   onDismiss,
 }: UpgradePromptProps) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-end bg-black/60 px-4 pb-4">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-border bg-background p-5 shadow-2xl">
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 px-4 pb-4 sm:pb-6">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-background p-5 shadow-2xl">
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Mail className="h-5 w-5" />
@@ -50,4 +50,3 @@ export function UpgradePrompt({
     </div>
   );
 }
-

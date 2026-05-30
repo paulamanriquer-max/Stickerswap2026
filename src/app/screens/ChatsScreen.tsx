@@ -19,6 +19,7 @@ interface Conversation {
 interface ChatsScreenProps {
   conversations: Conversation[];
   publicMessages: Message[];
+  publicRoomName: string;
   onChatClick: (username: string) => void;
   onUpgradeRequest: () => void;
   canUsePrivateChat: boolean;
@@ -27,7 +28,7 @@ interface ChatsScreenProps {
 
 type ChatView = 'public' | 'private';
 
-export function ChatsScreen({ conversations, publicMessages, onChatClick, onUpgradeRequest, canUsePrivateChat, city }: ChatsScreenProps) {
+export function ChatsScreen({ conversations, publicMessages, publicRoomName, onChatClick, onUpgradeRequest, canUsePrivateChat, city }: ChatsScreenProps) {
   const [view, setView] = useState<ChatView>('public');
   const formatTimestamp = (date: Date) => {
     const now = new Date();
@@ -45,17 +46,15 @@ export function ChatsScreen({ conversations, publicMessages, onChatClick, onUpgr
     return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const sortedConversations = [...conversations].sort((a, b) => {
-    const timeA = a.lastMessageTime?.getTime() || 0;
-    const timeB = b.lastMessageTime?.getTime() || 0;
+  const sortedConversations = conversations
+    .filter(conversation => conversation.username !== publicRoomName)
+    .sort((a, b) => {
+    const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+    const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
     return timeB - timeA;
   });
 
-  const latestPublicMessage = publicMessages[publicMessages.length - 1]?.text;
-  const publicRooms = [
-    { name: `${city} - Meetups & Trades`, memberCount: 127, lastMessage: latestPublicMessage },
-    { name: `${city} - General Chat`, memberCount: 89, lastMessage: latestPublicMessage },
-  ];
+  const latestPublicMessage = publicMessages[publicMessages.length - 1];
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -92,22 +91,37 @@ export function ChatsScreen({ conversations, publicMessages, onChatClick, onUpgr
         {/* Public Rooms Section */}
         {view === 'public' && (
           <div className="space-y-2">
-            {publicRooms.map((room) => (
-              <button
-                key={room.name}
-                onClick={() => onChatClick(room.name)}
-                className="w-full flex items-center gap-3 p-3 bg-primary/5 hover:bg-primary/10 rounded-xl border border-primary/20 active:scale-[0.98] transition-all"
-              >
-                <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <h3 className="font-semibold text-foreground text-sm">{room.name}</h3>
-                  <p className="text-xs text-muted-foreground">{room.memberCount} members</p>
-                  {room.lastMessage && <p className="text-xs text-muted-foreground truncate mt-1">{room.lastMessage}</p>}
-                </div>
-              </button>
-            ))}
+            <button
+              onClick={() => onChatClick(publicRoomName)}
+              className="w-full flex items-center gap-3 p-3 bg-primary/5 hover:bg-primary/10 rounded-xl border border-primary/20 active:scale-[0.98] transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <h3 className="font-semibold text-foreground text-sm">{publicRoomName}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {publicMessages.length === 0
+                    ? 'No public messages yet'
+                    : `${publicMessages.length} message${publicMessages.length === 1 ? '' : 's'}`}
+                </p>
+                {latestPublicMessage && (
+                  <p className="text-xs text-muted-foreground truncate mt-1">
+                    {latestPublicMessage.sender}: {latestPublicMessage.text}
+                  </p>
+                )}
+              </div>
+            </button>
+
+            {publicMessages.length === 0 && (
+              <div className="rounded-xl border border-border/50 bg-card/30 p-4 text-center">
+                <MessageCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-foreground">Start the Kansas City collector chat</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Share what you need, what you have to trade, or where you want to meet.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

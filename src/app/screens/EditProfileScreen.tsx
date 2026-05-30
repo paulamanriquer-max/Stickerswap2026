@@ -1,33 +1,36 @@
-import { ArrowLeft, User, Mail, Camera } from 'lucide-react';
+import { ArrowLeft, Camera, Mail, User } from 'lucide-react';
 import { useState } from 'react';
+import { AppUser } from '../lib/backend';
+import { Button } from '../components/Button';
 
 interface EditProfileScreenProps {
   onBack?: () => void;
+  user?: AppUser | null;
+  onSave?: (name: string, email: string) => boolean;
 }
 
-export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
-  const [fullName, setFullName] = useState('Carlos');
-  const [email, setEmail] = useState('carlos@example.com');
+const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
+
+export function EditProfileScreen({ onBack, user, onSave }: EditProfileScreenProps) {
+  const [fullName, setFullName] = useState(user?.username || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [fullNameError, setFullNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [emailExistsError, setEmailExistsError] = useState(false);
+  const initial = (fullName || 'C').charAt(0).toUpperCase();
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (event: React.FormEvent) => {
+    event.preventDefault();
 
-    let hasError = false;
-    if (!fullName.trim()) {
-      setFullNameError(true);
-      hasError = true;
-    }
-    if (!email.trim()) {
-      setEmailError(true);
-      hasError = true;
-    }
+    const nextNameError = !fullName.trim();
+    const nextEmailError = !isValidEmail(email.trim());
+    setFullNameError(nextNameError);
+    setEmailError(nextEmailError);
+    setEmailExistsError(false);
+    if (nextNameError || nextEmailError) return;
 
-    if (hasError) return;
-
-    // Handle save logic
-    onBack?.();
+    const saved = onSave?.(fullName.trim(), email.trim()) ?? false;
+    if (!saved) setEmailExistsError(true);
   };
 
   return (
@@ -49,7 +52,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         <div className="flex justify-center mb-8">
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-              <span className="text-primary-foreground font-bold text-3xl">C</span>
+              <span className="text-primary-foreground font-bold text-3xl">{initial}</span>
             </div>
             <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-card/30 backdrop-blur-xl border border-border/50 flex items-center justify-center active:scale-90 transition-transform">
               <Camera className="w-4 h-4 text-foreground" />
@@ -65,13 +68,11 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
               <input
                 type="text"
                 value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
+                onChange={(event) => {
+                  setFullName(event.target.value);
                   if (fullNameError) setFullNameError(false);
                 }}
-                onBlur={() => {
-                  if (!fullName.trim()) setFullNameError(true);
-                }}
+                onBlur={() => setFullNameError(!fullName.trim())}
                 className={`w-full h-12 pl-8 pr-4 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground ${
                   fullNameError
                     ? 'border-destructive focus:ring-destructive/50 focus:border-destructive'
@@ -80,11 +81,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                 required
               />
             </div>
-            {fullNameError && (
-              <div className="mt-2 text-sm text-destructive">
-                Full name is required
-              </div>
-            )}
+            {fullNameError && <div className="mt-2 text-sm text-destructive">Full name is required</div>}
           </div>
 
           <div>
@@ -94,35 +91,28 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
+                onChange={(event) => {
+                  setEmail(event.target.value);
                   if (emailError) setEmailError(false);
+                  if (emailExistsError) setEmailExistsError(false);
                 }}
-                onBlur={() => {
-                  if (!email.trim()) setEmailError(true);
-                }}
+                onBlur={() => setEmailError(!isValidEmail(email.trim()))}
                 className={`w-full h-12 pl-8 pr-4 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground ${
-                  emailError
+                  emailError || emailExistsError
                     ? 'border-destructive focus:ring-destructive/50 focus:border-destructive'
                     : 'border-border/50 focus:ring-primary/50 focus:border-primary'
                 }`}
                 required
               />
             </div>
-            {emailError && (
-              <div className="mt-2 text-sm text-destructive">
-                Email is required
-              </div>
-            )}
+            {emailError && <div className="mt-2 text-sm text-destructive">Enter a valid email address</div>}
+            {emailExistsError && <div className="mt-2 text-sm text-destructive">That email is already connected to another account</div>}
           </div>
 
           <div className="pt-4">
-            <button
-              type="submit"
-              className="w-full h-12 bg-primary text-primary-foreground rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/30"
-            >
-              Save Changes
-            </button>
+            <Button type="submit" fullWidth>
+              Save changes
+            </Button>
           </div>
         </form>
       </div>

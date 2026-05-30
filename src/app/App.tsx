@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { AlbumSelectionScreen } from './screens/AlbumSelectionScreen';
-import { LocationPermissionScreen } from './screens/LocationPermissionScreen';
 import { MyAlbumScreen } from './screens/MyAlbumScreen';
 import { TeamDetailScreen } from './screens/TeamDetailScreen';
 import { MatchesScreen } from './screens/MatchesScreen';
@@ -13,6 +12,7 @@ import { SignInScreen } from './screens/SignInScreen';
 import { SignUpScreen } from './screens/SignUpScreen';
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen';
 import { EditProfileScreen } from './screens/EditProfileScreen';
+import { LocationPermissionScreen } from './screens/LocationPermissionScreen';
 import { LocationSettingsScreen } from './screens/LocationSettingsScreen';
 import { NotificationsScreen } from './screens/NotificationsScreen';
 import { PrivacySecurityScreen } from './screens/PrivacySecurityScreen';
@@ -20,10 +20,10 @@ import { ChatsScreen } from './screens/ChatsScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { AdminLoginScreen } from './screens/AdminLoginScreen';
 import { AdminScreen } from './screens/AdminScreen';
-import { CitySelectionScreen } from './screens/CitySelectionScreen';
 import { AddEmailScreen } from './screens/AddEmailScreen';
 import { UpgradePrompt } from './components/UpgradePrompt';
 import { AppUser, backend, shouldPromptForUpgrade, StickerState } from './lib/backend';
+import { applyStickerStatus, createDefaultStickerStates, normalizeStickerStates, setStickerStatus, StickerStatus } from './lib/stickerState';
 
 type Screen =
   | 'welcome'
@@ -32,7 +32,6 @@ type Screen =
   | 'reset-password'
   | 'album-selection'
   | 'location-permission'
-  | 'city-selection'
   | 'album'
   | 'team-detail'
   | 'matches'
@@ -73,6 +72,9 @@ interface Conversation {
   lastMessageTime?: Date;
 }
 
+const MVP_CITY = 'Kansas City';
+const PUBLIC_ROOM_NAME = `${MVP_CITY} Community`;
+
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(() => backend.loadUser());
   const [currentScreen, setCurrentScreen] = useState<Screen>(() => backend.loadUser() ? 'matches' : 'welcome');
@@ -80,12 +82,10 @@ export default function App() {
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedCollector, setSelectedCollector] = useState<string>('');
   const [selectedChatUser, setSelectedChatUser] = useState<string>('');
-  const [selectedCity, setSelectedCity] = useState<string>('Kansas City');
-  const [locationEnabled, setLocationEnabled] = useState<boolean>(false);
   const [showAddSticker, setShowAddSticker] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => Boolean(backend.loadUser()));
   const [previousScreen, setPreviousScreen] = useState<Screen | null>(null);
-  const [stickers, setStickers] = useState<Sticker[]>(() => backend.loadStickers());
+  const [stickers, setStickers] = useState<Sticker[]>(() => normalizeStickerStates(backend.loadStickers()));
   const [conversations, setConversations] = useState<Conversation[]>(() => backend.loadConversations<Conversation>());
   const [publicMessages, setPublicMessages] = useState<Message[]>(() => backend.loadPublicMessages());
   const [upgradePrompt, setUpgradePrompt] = useState<{ title?: string; message?: string } | null>(null);
@@ -95,7 +95,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    backend.saveStickers(stickers as StickerState[]);
+    void backend.saveStickers(stickers as StickerState[]).catch(() => {
+      // Local preview still works if the live backend is temporarily unavailable.
+    });
   }, [stickers]);
 
   useEffect(() => {
@@ -114,23 +116,93 @@ export default function App() {
     else if (tab === 'profile') setCurrentScreen('profile');
   };
 
-  const handleOnboardingComplete = (hasLocation: boolean) => {
-    setLocationEnabled(hasLocation);
-    setCurrentScreen('city-selection');
-  };
-
-  const handleCitySelected = (city: string) => {
-    setSelectedCity(city);
+  const enterKansasCityMarket = () => {
     setHasCompletedOnboarding(true);
-    backend.track('nearby_users_found', { city });
-    backend.track('match_found', { city, count: 4 });
+    backend.track('nearby_users_found', { city: MVP_CITY, market: 'fixed_mvp' });
     setCurrentScreen('matches');
   };
 
-  const handleUsernameSubmit = (username: string) => {
-    const createdUser = backend.createAnonymousUser(username);
+  const requestLocation = (onDone = enterKansasCityMarket) => {
+    if (!navigator.geolocation) {
+      backend.track('location_unavailable', { city: MVP_CITY });
+      onDone();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const updatedUser = backend.updateLocation(position.coords.latitude, position.coords.longitude);
+        if (updatedUser) setUser(updatedUser);
+        backend.track('location_enabled', { city: MVP_CITY });
+        onDone();
+      },
+      () => {
+        backend.updateLocation(null, null);
+        backend.track('location_denied', { city: MVP_CITY });
+        onDone();
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  };
+
+  const disableLocation = () => {
+    const updatedUser = backend.updateLocation(null, null);
+    if (updatedUser) setUser(updatedUser);
+    backend.track('location_disabled', { city: MVP_CITY });
+  };
+
+  const handleCreateAccount = async (name: string, email: string, password: string, recoveryQuestion: string, recoveryAnswer: string) => {
+    if (await backend.accountExists(email)) return false;
+    const createdUser = await backend.createEmailUser(name, email, password, recoveryQuestion, recoveryAnswer);
     setUser(createdUser);
+    setStickers(createDefaultStickerStates());
+    setConversations([]);
     setCurrentScreen('location-permission');
+    return true;
+  };
+
+  const handleEmailSignIn = async (email: string, password: string) => {
+    const signedInUser = await backend.signInWithEmail(email, password);
+    if (!signedInUser) return false;
+    setUser(signedInUser);
+    const savedStickers = await backend.loadStickersRemote();
+    setStickers(normalizeStickerStates(savedStickers));
+    setConversations(backend.loadConversations<Conversation>());
+    setPublicMessages(await backend.loadPublicMessagesRemote());
+    enterKansasCityMarket();
+    return true;
+  };
+
+  const handleLogout = () => {
+    backend.signOut();
+    setUser(null);
+    setStickers([]);
+    setConversations([]);
+    setSelectedTeam('');
+    setSelectedCollector('');
+    setSelectedChatUser('');
+    setPreviousScreen(null);
+    setActiveTab('matches');
+    setHasCompletedOnboarding(false);
+    setCurrentScreen('welcome');
+  };
+
+  const handlePasswordReset = async (email: string, answer: string, password: string) => {
+    return backend.resetPassword(email, answer, password);
+  };
+
+  const handleProfileUpdate = (name: string, email: string) => {
+    const updatedUser = backend.updateCurrentUserProfile(name, email);
+    if (!updatedUser || 'error' in updatedUser) return false;
+    setUser(updatedUser);
+    setCurrentScreen('profile');
+    return true;
+  };
+
+  const handleDeleteCurrentAccount = () => {
+    const email = user?.email;
+    if (email) backend.deleteAccount(email);
+    handleLogout();
   };
 
   const handleNavigate = (screen: string) => {
@@ -193,6 +265,7 @@ export default function App() {
     };
     backend.track('message_sent', { type: 'public' });
     setPublicMessages(prev => [...prev, newMessage]);
+    void backend.sendPublicMessage(text.trim()).catch(() => {});
   };
 
   const handleUpgradeWithEmail = (email: string) => {
@@ -207,6 +280,8 @@ export default function App() {
     setUpgradePrompt({ title, message });
   };
 
+  const isPublicRoom = (name: string) => name === PUBLIC_ROOM_NAME;
+
   const showBottomNav = hasCompletedOnboarding &&
     ['album', 'matches', 'chats', 'profile'].includes(currentScreen);
 
@@ -215,15 +290,21 @@ export default function App() {
       case 'welcome':
         return (
           <WelcomeScreen
-            onUsernameSubmit={handleUsernameSubmit}
+            onNavigate={handleNavigate}
           />
         );
 
       case 'sign-in':
-        return <SignInScreen onNavigate={handleNavigate} />;
+        return <SignInScreen onNavigate={handleNavigate} onEmailSignIn={handleEmailSignIn} />;
 
       case 'sign-up':
-        return <SignUpScreen onNavigate={handleNavigate} />;
+        return (
+          <SignUpScreen
+            onNavigate={handleNavigate}
+            onCreateAccount={handleCreateAccount}
+            onEmailExists={backend.accountExists}
+          />
+        );
 
       case 'add-email':
         return (
@@ -234,25 +315,34 @@ export default function App() {
         );
 
       case 'reset-password':
-        return <ResetPasswordScreen onNavigate={handleNavigate} />;
+        return (
+          <ResetPasswordScreen
+            onNavigate={handleNavigate}
+            onLookupRecoveryQuestion={backend.getRecoveryQuestion}
+            onVerifyRecoveryAnswer={backend.verifyRecoveryAnswer}
+            onResetPassword={handlePasswordReset}
+          />
+        );
 
       case 'album-selection':
         return (
           <AlbumSelectionScreen
-            onContinue={() => setCurrentScreen('location-permission')}
+            onContinue={enterKansasCityMarket}
           />
         );
 
       case 'location-permission':
         return (
           <LocationPermissionScreen
-            onAllow={() => handleOnboardingComplete(true)}
-            onSkip={() => handleOnboardingComplete(false)}
+            city={MVP_CITY}
+            onBack={() => setCurrentScreen('sign-up')}
+            onAllow={() => requestLocation()}
+            onSkip={() => {
+              backend.track('location_skipped', { city: MVP_CITY });
+              enterKansasCityMarket();
+            }}
           />
         );
-
-      case 'city-selection':
-        return <CitySelectionScreen onContinue={handleCitySelected} />;
 
       case 'album':
         return (
@@ -263,6 +353,28 @@ export default function App() {
             }}
             onAddSticker={() => setShowAddSticker(true)}
             stickers={stickers}
+            onUpdateSticker={(code, updates) => {
+              setStickers(prev => prev.map(sticker =>
+                sticker.code === code ? { ...sticker, ...updates } : sticker
+              ));
+            }}
+            onBulkUpdate={(codes, status) => {
+              setStickers(prev => {
+                const codeSet = new Set(codes);
+                const nextStickers = prev.map(sticker =>
+                  codeSet.has(sticker.code) ? setStickerStatus(sticker, status) : sticker
+                );
+
+                backend.track('collection_progress', {
+                  action: 'bulk_update',
+                  status,
+                  count: codes.length,
+                  collected: nextStickers.filter(s => s.owned || s.duplicateCount > 0).length,
+                  duplicates: nextStickers.reduce((sum, s) => sum + s.duplicateCount, 0),
+                });
+                return nextStickers;
+              });
+            }}
           />
         );
 
@@ -271,9 +383,7 @@ export default function App() {
           <TeamDetailScreen
             teamCode={selectedTeam}
             onBack={() => setCurrentScreen('album')}
-            onStickerClick={(code) => {
-              console.log('Sticker clicked:', code);
-            }}
+            onStickerClick={() => {}}
             stickers={stickers}
             onUpdateSticker={(code, updates) => {
               setStickers(prev => {
@@ -281,12 +391,12 @@ export default function App() {
                 if (existingIndex !== -1) {
                   return prev.map((s, i) => i === existingIndex ? { ...s, ...updates } : s);
                 } else {
-                  return [...prev, { code, owned: false, missing: false, duplicateCount: 0, ...updates }];
+                  return [...prev, { code, owned: false, missing: true, duplicateCount: 0, ...updates }];
                 }
               });
             }}
             onDeleteSticker={(code) => {
-              setStickers(prev => prev.filter(s => s.code !== code));
+              setStickers(prev => prev.map(s => s.code === code ? setStickerStatus(s, 'missing') : s));
             }}
           />
         );
@@ -294,47 +404,55 @@ export default function App() {
       case 'matches':
         return (
           <MatchesScreen
-            onCollectorClick={(username) => {
-              setSelectedCollector(username);
+            onCollectorClick={(collectorId) => {
+              setSelectedCollector(collectorId);
               setCurrentScreen('match-detail');
             }}
-            locationEnabled={locationEnabled}
-            city={selectedCity}
+            city={MVP_CITY}
+            stickers={stickers as StickerState[]}
           />
         );
 
-      case 'match-detail':
+      case 'match-detail': {
+        const selectedComparison = backend
+          .getCollectorComparisons(stickers as StickerState[])
+          .find(collector => collector.id === selectedCollector);
+        const selectedChatTarget = selectedComparison?.username || selectedCollector;
+
         return (
           <MatchDetailScreen
-            username={selectedCollector}
+            comparison={selectedComparison}
             onBack={() => setCurrentScreen('matches')}
             onStartChat={() => {
-              backend.track('chat_attempted', { target: selectedCollector, blocked: !user?.email });
+              backend.track('chat_attempted', { target: selectedChatTarget, blocked: !user?.email });
               if (!user?.email) {
-                setSelectedChatUser(selectedCollector);
+                setSelectedChatUser(selectedChatTarget);
                 requestUpgrade(
                   'Add your email to chat and trade with others',
                   'Private chat uses magic-link accounts so collectors can recover conversations and keep trades safer.'
                 );
                 return;
               }
-              setSelectedChatUser(selectedCollector);
+              setSelectedChatUser(selectedChatTarget);
               setCurrentScreen('chat');
             }}
           />
         );
+      }
 
       case 'chats':
         return (
           <ChatsScreen
             conversations={conversations}
             publicMessages={publicMessages}
-            city={selectedCity}
+            publicRoomName={PUBLIC_ROOM_NAME}
+            city={MVP_CITY}
             canUsePrivateChat={Boolean(user?.email)}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onChatClick={(username) => {
-              backend.track('chat_attempted', { target: username, blocked: !user?.email && !username.includes(' - ') });
-              if (!user?.email && !username.includes(' - ')) {
+              const publicRoom = isPublicRoom(username);
+              backend.track('chat_attempted', { target: username, blocked: !user?.email && !publicRoom });
+              if (!user?.email && !publicRoom) {
                 setSelectedChatUser(username);
                 requestUpgrade('Add your email to chat and trade with others');
                 return;
@@ -349,30 +467,32 @@ export default function App() {
         return (
           <ChatScreen
             username={selectedChatUser}
-            messages={selectedChatUser.includes(' - ') ? publicMessages : conversations.find(c => c.username === selectedChatUser)?.messages || []}
-            isPublic={selectedChatUser.includes(' - ')}
-            canSend={selectedChatUser.includes(' - ') || Boolean(user?.email)}
+            messages={isPublicRoom(selectedChatUser) ? publicMessages : conversations.find(c => c.username === selectedChatUser)?.messages || []}
+            isPublic={isPublicRoom(selectedChatUser)}
+            canSend={isPublicRoom(selectedChatUser) || Boolean(user?.email)}
             onBack={() => setCurrentScreen('chats')}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onSendMessage={(text) => {
-              if (selectedChatUser.includes(' - ')) handleSendPublicMessage(text);
+              if (isPublicRoom(selectedChatUser)) handleSendPublicMessage(text);
               else handleSendMessage(selectedChatUser, text);
             }}
           />
         );
 
       case 'profile':
-        return <ProfileScreen onNavigate={handleNavigate} stickers={stickers} user={user} />;
+        return <ProfileScreen onNavigate={handleNavigate} onLogout={handleLogout} stickers={stickers} user={user} />;
 
       case 'edit-profile':
-        return <EditProfileScreen onBack={handleBack} />;
+        return <EditProfileScreen onBack={handleBack} user={user} onSave={handleProfileUpdate} />;
 
       case 'location-settings':
         return (
           <LocationSettingsScreen
             onBack={handleBack}
-            locationEnabled={locationEnabled}
-            onLocationChange={setLocationEnabled}
+            city={MVP_CITY}
+            user={user}
+            onEnableLocation={() => requestLocation(() => setCurrentScreen('location-settings'))}
+            onDisableLocation={disableLocation}
           />
         );
 
@@ -380,7 +500,7 @@ export default function App() {
         return <NotificationsScreen onBack={handleBack} />;
 
       case 'privacy-security':
-        return <PrivacySecurityScreen onBack={handleBack} />;
+        return <PrivacySecurityScreen onBack={handleBack} onDeleteAccount={handleDeleteCurrentAccount} />;
 
       case 'admin-login':
         return (
@@ -416,25 +536,21 @@ export default function App() {
             existingStickers={stickers}
             onAdd={(code, status, duplicateCount) => {
               const existingIndex = stickers.findIndex(s => s.code === code);
-              const now = new Date().toISOString();
+              const safeStatus = status as StickerStatus;
               const applyStickerUpdate = (list: Sticker[]) => {
                 if (existingIndex !== -1) {
                   return list.map((s, i) => {
                     if (i !== existingIndex) return s;
-                    if (status === 'owned') return { ...s, owned: true, missing: false, updatedAt: now };
-                    if (status === 'duplicate') return { ...s, duplicateCount: s.duplicateCount + (duplicateCount || 1), missing: false, updatedAt: now };
-                    if (status === 'missing') return { ...s, missing: true, owned: false, duplicateCount: 0, updatedAt: now };
-                    return s;
+                    return applyStickerStatus(s, safeStatus, duplicateCount || 1);
                   });
                 }
 
-                return [...list, {
+                return [...list, applyStickerStatus({
                   code,
-                  owned: status === 'owned',
-                  missing: status === 'missing',
-                  duplicateCount: status === 'duplicate' ? (duplicateCount || 1) : 0,
-                  updatedAt: now,
-                }];
+                  owned: false,
+                  missing: true,
+                  duplicateCount: 0,
+                }, safeStatus, duplicateCount || 1)];
               };
 
               const nextStickers = applyStickerUpdate(stickers);

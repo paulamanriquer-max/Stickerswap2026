@@ -25,6 +25,10 @@ The Supabase-ready backend schema is in:
 
 `supabase/schema.sql`
 
+The sticker seed data for all 992 stickers is in:
+
+`supabase/seed_stickers.sql`
+
 The architecture notes and example API calls are in:
 
 `docs/backend-frontend-architecture.md`

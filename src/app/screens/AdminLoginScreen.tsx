@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Lock, Mail, ArrowLeft, ShieldCheck } from 'lucide-react';
 
 // Admin credentials — change these to something only you know
-const ADMIN_EMAIL = 'admin@stickerswap.app';
-const ADMIN_PASSWORD = 'Sticker2026Mundia!';
+const ADMIN_EMAIL = 'paulaadmin@stickerswap.com';
+const ADMIN_PASSWORD = 'M0nasMundial2026!';
 
 interface AdminLoginScreenProps {
   onSuccess: () => void;
@@ -101,7 +101,7 @@ export function AdminLoginScreen({ onSuccess, onBack }: AdminLoginScreenProps) {
           onClick={handleSubmit as any}
           className="w-full h-12 bg-primary text-primary-foreground rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/30"
         >
-          Sign In as Admin
+          Log in as Admin
         </button>
       </div>
     </div>

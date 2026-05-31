@@ -7,20 +7,20 @@ This app is now designed for real user testing with an email-backed account mode
 - Users create an account with name, email, and password.
 - Duplicate emails are not allowed.
 - Password recovery starts from the Log in screen.
-- The security question is stored for account recovery context, but the safest production reset path is still Supabase email recovery or a small Supabase Edge Function.
+- The security question is stored for account recovery context, with a Supabase Edge Function handling password reset.
 - Location is optional and can be turned on or off from Location Settings.
 - New users start with every sticker set to Missing.
 
-## Current Local Preview
+## Live Backend
 
-The local preview still works without Supabase credentials. It stores data in the browser so you can keep testing UX quickly:
+The app is configured for Supabase when `VITE_BACKEND_MODE=supabase`.
 
-- current user
-- sticker statuses
-- private and public chats
-- notification preferences
-- privacy settings
-- admin user/activity data
+- Accounts are created through Supabase Auth.
+- Profiles are stored in `profiles`.
+- Sticker status changes are stored in `user_stickers`.
+- Matching reads live collector data.
+- Kansas City public chat stores messages in `public_messages`.
+- Analytics events are stored in `analytics_events`.
 
 ## Supabase Files
 
@@ -32,7 +32,7 @@ The local preview still works without Supabase credentials. It stores data in th
 
 - `profiles`: user profile, email, status, location, privacy, recovery question metadata
 - `stickers`: Panini checklist source of truth
-- `user_stickers`: each user’s owned, missing, and duplicate count
+- `user_stickers`: each user's owned, missing, and duplicate count
 - `messages`: private chat
 - `public_messages`: Kansas City community room
 - `analytics_events`: admin/activity tracking
@@ -71,17 +71,3 @@ Supabase RLS policies enforce:
 - messages are visible only to sender and receiver
 - public room messages are visible to authenticated users
 - notification settings are visible/editable only by the current user
-
-## Setup Steps
-
-1. Create a Supabase project.
-2. Open SQL Editor.
-3. Run `supabase/schema.sql`.
-4. Run `supabase/seed_stickers.sql`.
-5. Copy `.env.example` to `.env`.
-6. Add your Supabase Project URL and anon key.
-7. Change `VITE_BACKEND_MODE=local` to `VITE_BACKEND_MODE=supabase` when we are ready to switch the app from local preview storage to live Supabase data.
-
-## Important Launch Note
-
-The database is ready for live data. The app still needs the final adapter switch after the Supabase URL and anon key exist. Keeping `VITE_BACKEND_MODE=local` protects the current preview while setup is incomplete.

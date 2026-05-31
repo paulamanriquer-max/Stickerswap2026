@@ -37,12 +37,16 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
     const updateViewport = () => {
       const visualViewport = window.visualViewport;
       if (!visualViewport) {
-        setViewportStyle({ height: '100dvh' });
+        setViewportStyle({ height: '100dvh', left: 0, top: 0, width: '100vw' });
         return;
       }
+      const viewportWidth = Math.min(visualViewport.width, 448);
+      const left = visualViewport.offsetLeft + Math.max(0, (visualViewport.width - viewportWidth) / 2);
       setViewportStyle({
         height: `${visualViewport.height}px`,
-        transform: `translateY(${visualViewport.offsetTop}px)`,
+        left: `${left}px`,
+        top: `${visualViewport.offsetTop}px`,
+        width: `${viewportWidth}px`,
       });
     };
 
@@ -79,24 +83,24 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
 
   return (
     <div
-      className="fixed inset-x-0 top-0 z-[100] mx-auto w-full max-w-md bg-background flex flex-col overflow-hidden"
+      className="fixed z-[100] bg-background flex flex-col overflow-hidden"
       style={viewportStyle}
     >
-      <div className="shrink-0 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3 bg-background-secondary/95 backdrop-blur-xl border-b border-border/50">
+      <div className="shrink-0 px-4 pt-5 pb-3 bg-background-secondary/95 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex items-center justify-center w-8 h-8 rounded-full active:scale-95 transition-transform"
+            className="flex items-center justify-center w-9 h-9 shrink-0 rounded-full active:scale-95 transition-transform"
           >
             <ChevronLeft className="w-5 h-5 text-foreground" />
           </button>
-          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-md shadow-primary/30">
+          <div className="w-10 h-10 shrink-0 rounded-full bg-primary flex items-center justify-center shadow-md shadow-primary/30">
             <span className="text-primary-foreground font-bold text-sm">
               {username.charAt(0).toUpperCase()}
             </span>
           </div>
-          <div className="flex-1">
-            <h2 className="font-bold text-foreground">{username}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-bold text-foreground">{username}</h2>
             <p className="text-xs text-muted-foreground">{isPublic ? 'Public room' : 'Online'}</p>
           </div>
         </div>
@@ -120,7 +124,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
                     : 'bg-card/50 backdrop-blur-xl border border-border/50 text-foreground rounded-bl-sm'
                 }`}
               >
-                <p className="text-sm">{msg.text}</p>
+                <p className="break-words text-sm leading-5">{msg.text}</p>
                 <p
                   className={`text-[10px] mt-1 ${
                     msg.isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
@@ -146,7 +150,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
         </div>
       )}
 
-      <div className="shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background-secondary/95 backdrop-blur-xl border-t border-border/50">
+      <div className="shrink-0 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background-secondary/95 backdrop-blur-xl border-t border-border/50">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -160,7 +164,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
             }}
             placeholder="Type a message..."
             disabled={!canSend}
-            className="min-w-0 flex-1 h-11 px-4 bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-sm"
+            className="min-w-0 flex-1 h-11 px-4 bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-[16px]"
           />
           <button
             onClick={handleSend}

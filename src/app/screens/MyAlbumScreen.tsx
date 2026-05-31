@@ -1,8 +1,8 @@
 import { TeamCard } from '../components/TeamCard';
 import { SearchBar } from '../components/SearchBar';
 import { StickerCard } from '../components/StickerCard';
-import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle, Check } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle, Check, Loader2 } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { worldCupTeams } from '../data/teams';
 import { getPlayerByCode, getPlayersByTeam } from '../data/players';
 import { StickerStatus } from '../lib/stickerState';
@@ -24,7 +24,62 @@ interface MyAlbumScreenProps {
 
 type Subpage = 'owned' | 'missing' | 'duplicates' | null;
 type BulkAction = 'owned' | 'duplicate' | 'missing';
-const PAGE_SIZE = 80;
+const PAGE_SIZE = 60;
+
+const SelectableStickerCard = memo(function SelectableStickerCard({
+  sticker,
+  selected,
+  onToggle,
+}: {
+  sticker: Sticker;
+  selected: boolean;
+  onToggle: (code: string) => void;
+}) {
+  const playerName = getPlayerByCode(sticker.code)?.name || 'Sticker';
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  return (
+    <button
+      type="button"
+      key={sticker.code}
+      onPointerDown={(event) => {
+        pointerStartRef.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerUp={(event) => {
+        event.preventDefault();
+        const start = pointerStartRef.current;
+        pointerStartRef.current = null;
+        if (start) {
+          const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+          if (moved > 8) return;
+        }
+        onToggle(sticker.code);
+      }}
+      className={`w-full touch-manipulation select-none flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-none ${
+        selected
+          ? 'border-primary bg-primary/10'
+          : 'border-border/50'
+      }`}
+    >
+      <span className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 ${
+        selected
+          ? 'bg-primary border-primary text-primary-foreground'
+          : 'border-border bg-background/60'
+      }`}>
+        {selected && <Check className="w-4 h-4" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-bold text-foreground">{sticker.code}</span>
+        <span className="block text-xs text-muted-foreground truncate">{playerName}</span>
+      </span>
+      {sticker.duplicateCount > 0 && (
+        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+          x{sticker.duplicateCount}
+        </span>
+      )}
+    </button>
+  );
+});
 
 function StickerGroup({
   teamCode,
@@ -58,40 +113,12 @@ function StickerGroup({
       <div className="space-y-2">
         {stickers.map(s => (
           selectable ? (
-            <button
+            <SelectableStickerCard
               key={s.code}
-              onPointerDown={(event) => {
-                if (event.pointerType === 'touch') {
-                  event.preventDefault();
-                  onToggle(s.code);
-                }
-              }}
-              onClick={(event) => {
-                if ((event.nativeEvent as PointerEvent).pointerType !== 'touch') onToggle(s.code);
-              }}
-              className={`w-full touch-manipulation flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-colors duration-75 ${
-                selectedCodes.has(s.code)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border/50'
-              }`}
-            >
-              <span className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 ${
-                selectedCodes.has(s.code)
-                  ? 'bg-primary border-primary text-primary-foreground'
-                  : 'border-border bg-background/60'
-              }`}>
-                {selectedCodes.has(s.code) && <Check className="w-4 h-4" />}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-bold text-foreground">{s.code}</span>
-                <span className="block text-xs text-muted-foreground truncate">{getPlayerByCode(s.code)?.name || 'Sticker'}</span>
-              </span>
-              {s.duplicateCount > 0 && (
-                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
-                  x{s.duplicateCount}
-                </span>
-              )}
-            </button>
+              sticker={s}
+              selected={selectedCodes.has(s.code)}
+              onToggle={onToggle}
+            />
           ) : (
             <StickerCard
               key={s.code}
@@ -188,14 +215,14 @@ function SubpageView({
     return () => observer.disconnect();
   }, [filtered.length, visibleCount]);
 
-  const toggleCode = (code: string) => {
+  const toggleCode = useCallback((code: string) => {
     setSelectedCodes(prev => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
       else next.add(code);
       return next;
     });
-  };
+  }, []);
 
   const startSelecting = () => {
     setIsSelecting(true);
@@ -319,10 +346,10 @@ function SubpageView({
           ))
         )}
         {visibleCount < filtered.length && (
-          <div ref={loadMoreRef} className="py-6 text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Loading more stickers...
-            </p>
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/50 bg-card/40">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
           </div>
         )}
       </div>

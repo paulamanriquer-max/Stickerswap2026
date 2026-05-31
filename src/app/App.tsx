@@ -91,6 +91,7 @@ export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>(() => backend.loadConversations<Conversation>());
   const [publicMessages, setPublicMessages] = useState<Message[]>(() => backend.loadPublicMessages());
   const [upgradePrompt, setUpgradePrompt] = useState<{ title?: string; message?: string } | null>(null);
+  const [chatError, setChatError] = useState('');
 
   useEffect(() => {
     backend.track('app_open', { user_id: user?.id, anonymous: user?.isAnonymous ?? true });
@@ -256,6 +257,18 @@ export default function App() {
       return;
     }
 
+    const resolvedReceiverId =
+      receiverId ||
+      conversations.find(c => c.username === username)?.userId ||
+      backend.getCollectorComparisons(stickers as StickerState[]).find(c => c.username === username)?.id ||
+      '';
+
+    if (!resolvedReceiverId) {
+      setChatError('This chat could not connect. Go back to Matches and open this collector again.');
+      return;
+    }
+
+    setChatError('');
     backend.track('message_sent', { target: username, type: 'private' });
 
     const newMessage: Message = {
@@ -275,18 +288,25 @@ export default function App() {
             : c
         );
       } else {
-        return [...prev, { userId: receiverId, username, messages: [newMessage], lastMessage: text, lastMessageTime: new Date() }];
+        return [...prev, { userId: resolvedReceiverId, username, messages: [newMessage], lastMessage: text, lastMessageTime: new Date() }];
       }
     });
-    if (receiverId) {
-      void backend.sendPrivateMessage(receiverId, text)
-        .then(() => backend.loadPrivateMessagesRemote().then(setConversations))
-        .catch(() => {});
-    }
+    void backend.sendPrivateMessage(resolvedReceiverId, text)
+      .then((saved) => {
+        if (!saved) {
+          setChatError('Message could not send. Check your connection and try again.');
+          return;
+        }
+        return backend.loadPrivateMessagesRemote().then(setConversations);
+      })
+      .catch(() => {
+        setChatError('Message could not send. Check your connection and try again.');
+      });
   };
 
   const handleSendPublicMessage = (text: string) => {
     if (!text.trim()) return;
+    setChatError('');
     const newMessage: Message = {
       id: Date.now().toString(),
       text: text.trim(),
@@ -467,6 +487,7 @@ export default function App() {
               }
               setSelectedChatUser(selectedChatTarget);
               setSelectedChatUserId(selectedComparison?.id || '');
+              setChatError('');
               setCurrentScreen('chat');
             }}
           />
@@ -493,6 +514,7 @@ export default function App() {
               }
               setSelectedChatUser(username);
               setSelectedChatUserId(publicRoom ? '' : userId || '');
+              setChatError('');
               setCurrentScreen('chat');
             }}
           />
@@ -505,6 +527,7 @@ export default function App() {
             messages={isPublicRoom(selectedChatUser) ? publicMessages : conversations.find(c => c.username === selectedChatUser)?.messages || []}
             isPublic={isPublicRoom(selectedChatUser)}
             canSend={isPublicRoom(selectedChatUser) || Boolean(user?.email)}
+            errorMessage={chatError}
             onBack={() => setCurrentScreen('chats')}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onSendMessage={(text) => {

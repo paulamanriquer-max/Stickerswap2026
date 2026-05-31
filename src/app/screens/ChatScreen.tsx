@@ -15,12 +15,13 @@ interface ChatScreenProps {
   messages: Message[];
   isPublic?: boolean;
   canSend?: boolean;
+  errorMessage?: string;
   onBack: () => void;
   onSendMessage: (text: string) => void;
   onUpgradeRequest?: () => void;
 }
 
-export function ChatScreen({ username, messages = [], isPublic = false, canSend = true, onBack, onSendMessage, onUpgradeRequest }: ChatScreenProps) {
+export function ChatScreen({ username, messages = [], isPublic = false, canSend = true, errorMessage = '', onBack, onSendMessage, onUpgradeRequest }: ChatScreenProps) {
   const [message, setMessage] = useState('');
   const [viewportStyle, setViewportStyle] = useState<CSSProperties>({ height: '100dvh' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -143,6 +144,12 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
           >
             Add email to chat and trade with others
           </button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="shrink-0 px-4 py-2 bg-destructive/10 border-t border-destructive/20">
+          <p className="text-xs font-semibold text-destructive">{errorMessage}</p>
         </div>
       )}
 

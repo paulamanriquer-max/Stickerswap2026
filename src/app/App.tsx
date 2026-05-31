@@ -307,16 +307,18 @@ export default function App() {
   const handleSendPublicMessage = (text: string) => {
     if (!text.trim()) return;
     setChatError('');
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: text.trim(),
-      sender: user?.username || 'You',
-      timestamp: new Date(),
-      isOwn: true,
-    };
     backend.track('message_sent', { type: 'public' });
-    setPublicMessages(prev => [...prev, newMessage]);
-    void backend.sendPublicMessage(text.trim()).catch(() => {});
+    void backend.sendPublicMessage(text.trim())
+      .then((saved) => {
+        if (!saved) {
+          setChatError('Message could not send. Check your connection and try again.');
+          return;
+        }
+        return backend.loadPublicMessagesRemote().then(setPublicMessages);
+      })
+      .catch(() => {
+        setChatError('Message could not send. Check your connection and try again.');
+      });
   };
 
   const handleUpgradeWithEmail = (email: string) => {

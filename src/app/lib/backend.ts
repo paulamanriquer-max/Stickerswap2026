@@ -770,14 +770,40 @@ export const backend = {
     const session = readSupabaseSession();
     const user = backend.loadUser();
     if (!usingSupabase() || !session || !user) return null;
-    const saved = await supabaseRpc<{
+    let saved: {
       id: string;
       message_text: string;
       created_at: string;
-    }>('send_public_message', {
-      p_room_key: 'kansas_city',
-      p_message_text: text,
-    }, session.accessToken);
+    };
+
+    try {
+      saved = await supabaseRpc<{
+        id: string;
+        message_text: string;
+        created_at: string;
+      }>('send_public_message', {
+        p_room_key: 'kansas_city',
+        p_message_text: text,
+      }, session.accessToken);
+    } catch {
+      const rows = await supabaseRest<Array<{
+        id: string;
+        message_text: string;
+        created_at: string;
+      }>>('/rest/v1/public_messages', {
+        method: 'POST',
+        accessToken: session.accessToken,
+        prefer: 'return=representation',
+        body: {
+          room_key: 'kansas_city',
+          user_id: user.id,
+          message_text: text,
+        },
+      });
+      saved = rows[0];
+    }
+
+    if (!saved) return null;
     return {
       id: saved.id,
       text: saved.message_text,
@@ -792,14 +818,40 @@ export const backend = {
     const session = readSupabaseSession();
     const user = backend.loadUser();
     if (!usingSupabase() || !session || !user || !receiverId) return null;
-    const saved = await supabaseRpc<{
+    let saved: {
       id: string;
       message_text: string;
       created_at: string;
-    }>('send_private_message', {
-      p_receiver_id: receiverId,
-      p_message_text: text,
-    }, session.accessToken);
+    };
+
+    try {
+      saved = await supabaseRpc<{
+        id: string;
+        message_text: string;
+        created_at: string;
+      }>('send_private_message', {
+        p_receiver_id: receiverId,
+        p_message_text: text,
+      }, session.accessToken);
+    } catch {
+      const rows = await supabaseRest<Array<{
+        id: string;
+        message_text: string;
+        created_at: string;
+      }>>('/rest/v1/messages', {
+        method: 'POST',
+        accessToken: session.accessToken,
+        prefer: 'return=representation',
+        body: {
+          sender_id: user.id,
+          receiver_id: receiverId,
+          message_text: text,
+        },
+      });
+      saved = rows[0];
+    }
+
+    if (!saved) return null;
     return {
       id: saved.id,
       text: saved.message_text,

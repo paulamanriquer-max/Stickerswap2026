@@ -37,16 +37,12 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
     const updateViewport = () => {
       const visualViewport = window.visualViewport;
       if (!visualViewport) {
-        setViewportStyle({ height: '100dvh', left: 0, top: 0, width: '100vw' });
+        setViewportStyle({ height: '100dvh', top: 0 });
         return;
       }
-      const viewportWidth = Math.min(visualViewport.width, 448);
-      const left = visualViewport.offsetLeft + Math.max(0, (visualViewport.width - viewportWidth) / 2);
       setViewportStyle({
         height: `${visualViewport.height}px`,
-        left: `${left}px`,
         top: `${visualViewport.offsetTop}px`,
-        width: `${viewportWidth}px`,
       });
     };
 
@@ -83,7 +79,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
 
   return (
     <div
-      className="fixed z-[100] bg-background flex flex-col overflow-hidden"
+      className="fixed inset-x-0 z-[100] bg-background flex flex-col overflow-hidden md:left-1/2 md:w-full md:max-w-md md:-translate-x-1/2"
       style={viewportStyle}
     >
       <div className="shrink-0 px-4 pt-5 pb-3 bg-background-secondary/95 backdrop-blur-xl border-b border-border/50">
@@ -152,19 +148,20 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
 
       <div className="shrink-0 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background-secondary/95 backdrop-blur-xl border-t border-border/50">
         <div className="flex items-center gap-2">
-          <input
-            type="text"
+          <textarea
             value={message}
+            rows={1}
+            style={{ fontSize: 17, lineHeight: '22px' }}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
             placeholder="Type a message..."
             disabled={!canSend}
-            className="min-w-0 flex-1 h-11 px-4 bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-[16px]"
+            className="min-w-0 flex-1 h-11 max-h-11 resize-none overflow-hidden px-4 py-[10px] bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground"
           />
           <button
             onClick={handleSend}

@@ -15,7 +15,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
-  const [accountError, setAccountError] = useState(false);
+  const [accountError, setAccountError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogIn = async (event: React.FormEvent) => {
@@ -25,12 +25,23 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
     const nextPasswordError = !password;
     setEmailError(nextEmailError);
     setPasswordError(nextPasswordError);
-    setAccountError(false);
+    setAccountError('');
     if (nextEmailError || nextPasswordError) return;
 
     setIsSubmitting(true);
-    const success = await onEmailSignIn?.(email.trim(), password) ?? false;
-    if (!success) setAccountError(true);
+    try {
+      const success = await onEmailSignIn?.(email.trim(), password) ?? false;
+      if (!success) setAccountError('Email or password did not match. Try again or reset your password.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'ACCOUNT_CONFIRM_EMAIL') {
+        setAccountError('Check your email to confirm your account, then come back and log in.');
+      } else if (message === 'ACCOUNT_INVALID') {
+        setAccountError('Email or password did not match. Try again or reset your password.');
+      } else {
+        setAccountError('We could not log you in. Check your connection and try again.');
+      }
+    }
     setIsSubmitting(false);
   };
 
@@ -63,7 +74,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
                 onChange={(event) => {
                   setEmail(event.target.value);
                   if (emailError) setEmailError(false);
-                  if (accountError) setAccountError(false);
+                  if (accountError) setAccountError('');
                 }}
                 onBlur={() => setEmailError(!isValidEmail(email.trim()))}
                 placeholder="you@example.com"
@@ -95,7 +106,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
                 onChange={(event) => {
                   setPassword(event.target.value);
                   if (passwordError) setPasswordError(false);
-                  if (accountError) setAccountError(false);
+                  if (accountError) setAccountError('');
                 }}
                 placeholder="Enter your password"
                 className={`w-full h-12 pl-8 pr-11 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
@@ -116,7 +127,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
           </div>
 
           {accountError && (
-            <p className="text-xs text-destructive">Email or password did not match. Try again or reset your password.</p>
+            <p className="text-xs text-destructive">{accountError}</p>
           )}
         </div>
       </form>

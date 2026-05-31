@@ -59,10 +59,18 @@ function StickerGroup({
           selectable ? (
             <button
               key={s.code}
-              onClick={() => onToggle(s.code)}
-              className={`w-full flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-all active:scale-[0.99] ${
+              onPointerDown={(event) => {
+                if (event.pointerType === 'touch') {
+                  event.preventDefault();
+                  onToggle(s.code);
+                }
+              }}
+              onClick={(event) => {
+                if ((event.nativeEvent as PointerEvent).pointerType !== 'touch') onToggle(s.code);
+              }}
+              className={`w-full touch-manipulation flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-colors duration-75 ${
                 selectedCodes.has(s.code)
-                  ? 'border-primary bg-primary/10 shadow-lg shadow-primary/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-border/50'
               }`}
             >

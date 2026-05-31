@@ -36,6 +36,14 @@ export interface StoredMessage {
   isPublic?: boolean;
 }
 
+export interface StoredConversation {
+  userId?: string;
+  username: string;
+  messages: StoredMessage[];
+  lastMessage?: string;
+  lastMessageTime?: Date;
+}
+
 export interface AnalyticsEvent {
   id: string;
   name: string;
@@ -183,6 +191,14 @@ interface SupabasePublicMessageRow {
   message_text: string;
   created_at: string;
   profiles?: { username?: string } | { username?: string }[];
+}
+
+interface SupabasePrivateMessageRow {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  message_text: string;
+  created_at: string;
 }
 
 const usingSupabase = () => isSupabaseConfigured();
@@ -345,11 +361,20 @@ export const backend = {
       const exists = await backend.accountExists(normalizedEmail);
       if (exists) throw new Error('ACCOUNT_EXISTS');
 
-      const signUp = await supabaseSignUp(normalizedEmail, password, {
-        username: name.trim(),
-        recovery_question: recoveryQuestion,
-        recovery_answer_digest: recoveryAnswerDigest(normalizedEmail, recoveryAnswer),
-      });
+      let signUp;
+      try {
+        signUp = await supabaseSignUp(normalizedEmail, password, {
+          username: name.trim(),
+          recovery_question: recoveryQuestion,
+          recovery_answer_digest: recoveryAnswerDigest(normalizedEmail, recoveryAnswer),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : '';
+        if (message.includes('already registered') || message.includes('already exists')) {
+          throw new Error('ACCOUNT_EXISTS');
+        }
+        throw error;
+      }
       if (!signUp.access_token) {
         throw new Error('ACCOUNT_CONFIRM_EMAIL');
       }
@@ -409,11 +434,14 @@ export const backend = {
         const auth = await supabaseLogIn(normalizedEmail, password);
         writeSupabaseSession({ accessToken: auth.access_token, refreshToken: auth.refresh_token });
         const signedInUser = await fetchCurrentProfile(auth.user.id, auth.access_token);
-        if (!signedInUser) return null;
+        if (!signedInUser) throw new Error('PROFILE_NOT_READY');
         writeJson(USER_KEY, signedInUser);
         return signedInUser;
-      } catch {
-        return null;
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : '';
+        if (message.includes('email not confirmed')) throw new Error('ACCOUNT_CONFIRM_EMAIL');
+        if (message.includes('invalid login') || message.includes('invalid credentials')) throw new Error('ACCOUNT_INVALID');
+        throw new Error('ACCOUNT_LOGIN_FAILED');
       }
     }
 
@@ -645,6 +673,57 @@ export const backend = {
     return readJson<T[]>(CONVERSATIONS_KEY, []);
   },
 
+  async loadPrivateMessagesRemote(): Promise<StoredConversation[]> {
+    const session = readSupabaseSession();
+    const user = backend.loadUser();
+    if (!usingSupabase() || !session || !user) return backend.loadConversations<StoredConversation>();
+
+    const rows = await supabaseRest<SupabasePrivateMessageRow[]>(
+      '/rest/v1/messages?select=id,sender_id,receiver_id,message_text,created_at&order=created_at.asc&limit=300',
+      { accessToken: session.accessToken }
+    );
+    const otherUserIds = Array.from(new Set(rows.map(row => row.sender_id === user.id ? row.receiver_id : row.sender_id)));
+    const profiles = otherUserIds.length > 0
+      ? await supabaseRest<Array<{ id: string; username: string }>>(
+        `/rest/v1/profiles?id=in.(${otherUserIds.join(',')})&select=id,username`,
+        { accessToken: session.accessToken }
+      ).catch(() => [])
+      : [];
+    const usernamesById = new Map(profiles.map(profile => [profile.id, profile.username]));
+
+    const conversationsByUser = new Map<string, StoredConversation>();
+    rows.forEach(row => {
+      const isOwn = row.sender_id === user.id;
+      const otherUserId = isOwn ? row.receiver_id : row.sender_id;
+      const otherUsername = usernamesById.get(otherUserId) || 'Collector';
+      const message: StoredMessage = {
+        id: row.id,
+        text: row.message_text,
+        sender: isOwn ? 'You' : otherUsername,
+        timestamp: new Date(row.created_at),
+        isOwn,
+      };
+      const existing = conversationsByUser.get(otherUserId) || {
+        userId: otherUserId,
+        username: otherUsername,
+        messages: [],
+      };
+      const messages = [...existing.messages, message];
+      conversationsByUser.set(otherUserId, {
+        ...existing,
+        username: otherUsername,
+        messages,
+        lastMessage: message.text,
+        lastMessageTime: message.timestamp,
+      });
+    });
+
+    const conversations = Array.from(conversationsByUser.values())
+      .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime());
+    writeJson(CONVERSATIONS_KEY, conversations);
+    return conversations;
+  },
+
   saveConversations(conversations: unknown[]) {
     const current = getCurrentAccount();
     if (current) {
@@ -706,6 +785,27 @@ export const backend = {
       timestamp: new Date(saved.created_at),
       isOwn: true,
       isPublic: true,
+    };
+  },
+
+  async sendPrivateMessage(receiverId: string, text: string): Promise<StoredMessage | null> {
+    const session = readSupabaseSession();
+    const user = backend.loadUser();
+    if (!usingSupabase() || !session || !user || !receiverId) return null;
+    const saved = await supabaseRpc<{
+      id: string;
+      message_text: string;
+      created_at: string;
+    }>('send_private_message', {
+      p_receiver_id: receiverId,
+      p_message_text: text,
+    }, session.accessToken);
+    return {
+      id: saved.id,
+      text: saved.message_text,
+      sender: 'You',
+      timestamp: new Date(saved.created_at),
+      isOwn: true,
     };
   },
 

@@ -23,13 +23,12 @@ export function ProfileScreen({ onNavigate, onLogout, stickers = [], user }: Pro
     { icon: Shield, label: 'Privacy & Security', screen: 'privacy-security' },
   ];
 
-  // Calculate trading stats from actual data
-  const totalTrades = stickers.filter(s => s.owned || s.duplicateCount > 0).length;
   const collectedStickers = stickers.filter(s => s.owned || s.duplicateCount > 0).length;
   const totalDuplicates = stickers.reduce((sum, s) => sum + s.duplicateCount, 0);
-  const completionPercentage = stickers.length > 0
-    ? Math.round((collectedStickers / stickers.length) * 100)
-    : 0;
+  const completionValue = stickers.length > 0 ? (collectedStickers / stickers.length) * 100 : 0;
+  const completionLabel = completionValue > 0 && completionValue < 1
+    ? '<1%'
+    : `${Math.round(completionValue)}%`;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -52,14 +51,14 @@ export function ProfileScreen({ onNavigate, onLogout, stickers = [], user }: Pro
         </div>
 
         <div className="mb-6">
-          <h3 className="mb-3">Trading Stats</h3>
+          <h3 className="mb-3">Collection Stats</h3>
           <div className="grid grid-cols-3 gap-2">
             <div className="flex flex-col items-center justify-center px-3 py-2 bg-card/50 backdrop-blur-xl rounded-lg border border-border/50 shadow-lg">
-              <span className="text-xl font-bold text-foreground">{totalTrades}</span>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Trades</span>
+              <span className="text-xl font-bold text-foreground">{collectedStickers}</span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Owned</span>
             </div>
             <div className="flex flex-col items-center justify-center px-3 py-2 bg-card/50 backdrop-blur-xl rounded-lg border border-border/50 shadow-lg">
-              <span className="text-xl font-bold text-foreground">{completionPercentage}%</span>
+              <span className="text-xl font-bold text-foreground">{completionLabel}</span>
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Complete</span>
             </div>
             <div className="flex flex-col items-center justify-center px-3 py-2 bg-card/50 backdrop-blur-xl rounded-lg border border-border/50 shadow-lg">

@@ -51,9 +51,8 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="px-4 pt-6 pb-3 bg-card/30 backdrop-blur-xl border-b border-border/50">
+    <div className="h-[100dvh] max-h-[100dvh] bg-background flex flex-col overflow-hidden">
+      <div className="sticky top-0 z-20 shrink-0 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3 bg-background-secondary/95 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -73,8 +72,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground text-sm">{canSend ? 'No messages yet. Start the conversation!' : 'Add your email to send private messages.'}</p>
@@ -107,9 +105,8 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       {!canSend && (
-        <div className="px-4 py-3 bg-primary/10 border-t border-primary/20">
+        <div className="shrink-0 px-4 py-3 bg-primary/10 border-t border-primary/20">
           <button
             onClick={onUpgradeRequest}
             className="h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground active:scale-95"
@@ -119,7 +116,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
         </div>
       )}
 
-      <div className="px-4 py-3 bg-card/30 backdrop-blur-xl border-t border-border/50">
+      <div className="sticky bottom-0 z-20 shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background-secondary/95 backdrop-blur-xl border-t border-border/50">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -138,7 +135,8 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
           <button
             onClick={handleSend}
             disabled={canSend && !message.trim()}
-            className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-11 h-11 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Send message"
           >
             <Send className="w-5 h-5" />
           </button>

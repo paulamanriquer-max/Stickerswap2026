@@ -155,6 +155,9 @@ export function MatchDetailScreen({ comparison, onBack, onStartChat }: MatchDeta
               <DistanceBadge distance={comparison.distance} />
               <MatchScoreBadge score={comparison.matchScore} />
             </div>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Match is based on trade overlap: stickers you need that they have as duplicates.
+            </p>
           </div>
         </div>
 

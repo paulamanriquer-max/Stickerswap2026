@@ -10,6 +10,7 @@ interface Message {
 }
 
 interface Conversation {
+  userId?: string;
   username: string;
   messages: Message[];
   lastMessage?: string;
@@ -20,7 +21,7 @@ interface ChatsScreenProps {
   conversations: Conversation[];
   publicMessages: Message[];
   publicRoomName: string;
-  onChatClick: (username: string) => void;
+  onChatClick: (username: string, userId?: string) => void;
   onUpgradeRequest: () => void;
   canUsePrivateChat: boolean;
   city: string;
@@ -154,7 +155,7 @@ export function ChatsScreen({ conversations, publicMessages, publicRoomName, onC
                 {sortedConversations.map((conversation) => (
                   <button
                     key={conversation.username}
-                    onClick={() => onChatClick(conversation.username)}
+                    onClick={() => onChatClick(conversation.username, conversation.userId)}
                     className="w-full flex items-center gap-3 p-3 bg-card/30 backdrop-blur-xl hover:bg-card/40 rounded-xl border border-border/50 shadow-lg active:scale-[0.98] transition-all"
                   >
                     <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-md shadow-primary/30 flex-shrink-0">

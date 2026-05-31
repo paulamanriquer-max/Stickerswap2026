@@ -23,6 +23,16 @@ interface SupabaseRequestOptions {
   prefer?: string;
 }
 
+const getSupabaseErrorMessage = (text: string) => {
+  if (!text) return '';
+  try {
+    const parsed = JSON.parse(text) as { msg?: string; message?: string; error_description?: string; error?: string };
+    return parsed.msg || parsed.message || parsed.error_description || parsed.error || text;
+  } catch {
+    return text;
+  }
+};
+
 const headers = (accessToken?: string, prefer?: string) => ({
   apikey: supabaseConfig.anonKey,
   Authorization: `Bearer ${accessToken || supabaseConfig.anonKey}`,
@@ -46,7 +56,7 @@ export async function supabaseRest<T>(
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `Supabase request failed with ${response.status}`);
+    throw new Error(getSupabaseErrorMessage(message) || `Supabase request failed with ${response.status}`);
   }
 
   const text = await response.text();

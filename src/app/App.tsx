@@ -66,6 +66,7 @@ interface Message {
 }
 
 interface Conversation {
+  userId?: string;
   username: string;
   messages: Message[];
   lastMessage?: string;
@@ -82,6 +83,7 @@ export default function App() {
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedCollector, setSelectedCollector] = useState<string>('');
   const [selectedChatUser, setSelectedChatUser] = useState<string>('');
+  const [selectedChatUserId, setSelectedChatUserId] = useState<string>('');
   const [showAddSticker, setShowAddSticker] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => Boolean(backend.loadUser()));
   const [previousScreen, setPreviousScreen] = useState<Screen | null>(null);
@@ -93,6 +95,25 @@ export default function App() {
   useEffect(() => {
     backend.track('app_open', { user_id: user?.id, anonymous: user?.isAnonymous ?? true });
   }, []);
+
+  useEffect(() => {
+    if (!user || !['chats', 'chat'].includes(currentScreen)) return;
+    let cancelled = false;
+    const refreshMessages = () => {
+      void backend.loadPrivateMessagesRemote().then(next => {
+        if (!cancelled) setConversations(next);
+      }).catch(() => {});
+      void backend.loadPublicMessagesRemote().then(next => {
+        if (!cancelled) setPublicMessages(next);
+      }).catch(() => {});
+    };
+    refreshMessages();
+    const interval = window.setInterval(refreshMessages, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [currentScreen, user?.id]);
 
   useEffect(() => {
     void backend.saveStickers(stickers as StickerState[]).catch(() => {
@@ -112,7 +133,11 @@ export default function App() {
     setActiveTab(tab);
     if (tab === 'album') setCurrentScreen('album');
     else if (tab === 'matches') setCurrentScreen('matches');
-    else if (tab === 'chats') setCurrentScreen('chats');
+    else if (tab === 'chats') {
+      void backend.loadPrivateMessagesRemote().then(setConversations).catch(() => {});
+      void backend.loadPublicMessagesRemote().then(setPublicMessages).catch(() => {});
+      setCurrentScreen('chats');
+    }
     else if (tab === 'profile') setCurrentScreen('profile');
   };
 
@@ -167,7 +192,7 @@ export default function App() {
     setUser(signedInUser);
     const savedStickers = await backend.loadStickersRemote();
     setStickers(normalizeStickerStates(savedStickers));
-    setConversations(backend.loadConversations<Conversation>());
+    setConversations(await backend.loadPrivateMessagesRemote());
     setPublicMessages(await backend.loadPublicMessagesRemote());
     enterKansasCityMarket();
     return true;
@@ -181,6 +206,7 @@ export default function App() {
     setSelectedTeam('');
     setSelectedCollector('');
     setSelectedChatUser('');
+    setSelectedChatUserId('');
     setPreviousScreen(null);
     setActiveTab('matches');
     setHasCompletedOnboarding(false);
@@ -220,7 +246,7 @@ export default function App() {
     }
   };
 
-  const handleSendMessage = (username: string, text: string) => {
+  const handleSendMessage = (username: string, text: string, receiverId?: string) => {
     if (!user?.email) {
       backend.track('chat_attempted', { target: username, blocked: true });
       setUpgradePrompt({
@@ -249,9 +275,14 @@ export default function App() {
             : c
         );
       } else {
-        return [...prev, { username, messages: [newMessage], lastMessage: text, lastMessageTime: new Date() }];
+        return [...prev, { userId: receiverId, username, messages: [newMessage], lastMessage: text, lastMessageTime: new Date() }];
       }
     });
+    if (receiverId) {
+      void backend.sendPrivateMessage(receiverId, text)
+        .then(() => backend.loadPrivateMessagesRemote().then(setConversations))
+        .catch(() => {});
+    }
   };
 
   const handleSendPublicMessage = (text: string) => {
@@ -427,6 +458,7 @@ export default function App() {
               backend.track('chat_attempted', { target: selectedChatTarget, blocked: !user?.email });
               if (!user?.email) {
                 setSelectedChatUser(selectedChatTarget);
+                setSelectedChatUserId(selectedComparison?.id || '');
                 requestUpgrade(
                   'Add your email to chat and trade with others',
                   'Private chat uses magic-link accounts so collectors can recover conversations and keep trades safer.'
@@ -434,6 +466,7 @@ export default function App() {
                 return;
               }
               setSelectedChatUser(selectedChatTarget);
+              setSelectedChatUserId(selectedComparison?.id || '');
               setCurrentScreen('chat');
             }}
           />
@@ -449,15 +482,17 @@ export default function App() {
             city={MVP_CITY}
             canUsePrivateChat={Boolean(user?.email)}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
-            onChatClick={(username) => {
+            onChatClick={(username, userId) => {
               const publicRoom = isPublicRoom(username);
               backend.track('chat_attempted', { target: username, blocked: !user?.email && !publicRoom });
               if (!user?.email && !publicRoom) {
                 setSelectedChatUser(username);
+                setSelectedChatUserId(userId || '');
                 requestUpgrade('Add your email to chat and trade with others');
                 return;
               }
               setSelectedChatUser(username);
+              setSelectedChatUserId(publicRoom ? '' : userId || '');
               setCurrentScreen('chat');
             }}
           />
@@ -474,7 +509,7 @@ export default function App() {
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onSendMessage={(text) => {
               if (isPublicRoom(selectedChatUser)) handleSendPublicMessage(text);
-              else handleSendMessage(selectedChatUser, text);
+              else handleSendMessage(selectedChatUser, text, selectedChatUserId);
             }}
           />
         );

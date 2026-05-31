@@ -82,6 +82,8 @@ export async function supabaseSignUp(
 ) {
   return supabaseRest<{
     access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
     user?: { id: string; email?: string };
   }>('/auth/v1/signup', {
     method: 'POST',
@@ -97,10 +99,23 @@ export async function supabaseLogIn(email: string, password: string) {
   return supabaseRest<{
     access_token: string;
     refresh_token: string;
+    expires_in?: number;
     user: { id: string; email?: string };
   }>('/auth/v1/token?grant_type=password', {
     method: 'POST',
     body: { email, password },
+  });
+}
+
+export async function supabaseRefreshSession(refreshToken: string) {
+  return supabaseRest<{
+    access_token: string;
+    refresh_token: string;
+    expires_in?: number;
+    user: { id: string; email?: string };
+  }>('/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
   });
 }
 

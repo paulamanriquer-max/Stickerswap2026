@@ -2,6 +2,7 @@ import { players } from '../data/players';
 import {
   isSupabaseConfigured,
   supabaseLogIn,
+  supabaseRefreshSession,
   supabaseRest,
   supabaseRpc,
   supabaseResetPasswordWithRecovery,
@@ -153,6 +154,7 @@ const recoveryAnswerDigest = (email: string, answer: string) => {
 interface SupabaseSession {
   accessToken: string;
   refreshToken?: string;
+  expiresAt?: number;
 }
 
 interface SupabaseProfile {
@@ -211,6 +213,28 @@ const writeSupabaseSession = (session: SupabaseSession | null) => {
     return;
   }
   writeJson(SUPABASE_SESSION_KEY, session);
+};
+
+const toStoredSession = (auth: { access_token: string; refresh_token?: string; expires_in?: number }): SupabaseSession => ({
+  accessToken: auth.access_token,
+  refreshToken: auth.refresh_token,
+  expiresAt: Date.now() + ((auth.expires_in || 3600) - 60) * 1000,
+});
+
+const getActiveSupabaseSession = async (): Promise<SupabaseSession | null> => {
+  const session = readSupabaseSession();
+  if (!session) return null;
+  if (!session.refreshToken || (session.expiresAt && session.expiresAt > Date.now())) return session;
+
+  try {
+    const refreshed = await supabaseRefreshSession(session.refreshToken);
+    const nextSession = toStoredSession(refreshed);
+    writeSupabaseSession(nextSession);
+    return nextSession;
+  } catch {
+    writeSupabaseSession(null);
+    return null;
+  }
 };
 
 const toAppUser = (profile: SupabaseProfile): AppUser => ({
@@ -384,7 +408,11 @@ export const backend = {
       const userId = auth.user?.id;
       if (!accessToken || !userId) throw new Error('ACCOUNT_NOT_READY');
 
-      writeSupabaseSession({ accessToken, refreshToken: 'refresh_token' in auth ? auth.refresh_token : undefined });
+      writeSupabaseSession(toStoredSession({
+        access_token: accessToken,
+        refresh_token: 'refresh_token' in auth ? auth.refresh_token : undefined,
+        expires_in: 'expires_in' in auth ? auth.expires_in as number : undefined,
+      }));
       const createdUser = await fetchCurrentProfile(userId, accessToken);
       if (!createdUser) throw new Error('PROFILE_NOT_READY');
       writeJson(USER_KEY, createdUser);
@@ -432,7 +460,7 @@ export const backend = {
     if (usingSupabase()) {
       try {
         const auth = await supabaseLogIn(normalizedEmail, password);
-        writeSupabaseSession({ accessToken: auth.access_token, refreshToken: auth.refresh_token });
+        writeSupabaseSession(toStoredSession(auth));
         const signedInUser = await fetchCurrentProfile(auth.user.id, auth.access_token);
         if (!signedInUser) throw new Error('PROFILE_NOT_READY');
         writeJson(USER_KEY, signedInUser);
@@ -640,7 +668,7 @@ export const backend = {
   },
 
   async loadStickersRemote(): Promise<StickerState[]> {
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     if (!usingSupabase() || !session) return backend.loadStickers();
     const remoteStickers = await fetchSupabaseStickers(session.accessToken);
     const normalized = stickerStatesWithMissingDefaults(remoteStickers);
@@ -654,7 +682,7 @@ export const backend = {
       saveAccount(current.email, { ...current.account, stickers });
     }
     writeJson(STICKERS_KEY, stickers);
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     if (usingSupabase() && session) {
       await supabaseRpc('upsert_user_stickers_bulk', {
         p_stickers: stickers.map(sticker => ({
@@ -674,7 +702,7 @@ export const backend = {
   },
 
   async loadPrivateMessagesRemote(): Promise<StoredConversation[]> {
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     const user = backend.loadUser();
     if (!usingSupabase() || !session || !user) return backend.loadConversations<StoredConversation>();
 
@@ -737,7 +765,7 @@ export const backend = {
   },
 
   async loadPublicMessagesRemote(): Promise<StoredMessage[]> {
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     const user = backend.loadUser();
     if (!usingSupabase() || !session) return backend.loadPublicMessages();
     const rows = await supabaseRest<SupabasePublicMessageRow[]>(
@@ -767,7 +795,7 @@ export const backend = {
   },
 
   async sendPublicMessage(text: string): Promise<StoredMessage | null> {
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     const user = backend.loadUser();
     if (!usingSupabase() || !session || !user) return null;
     let saved: {
@@ -815,7 +843,7 @@ export const backend = {
   },
 
   async sendPrivateMessage(receiverId: string, text: string): Promise<StoredMessage | null> {
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     const user = backend.loadUser();
     if (!usingSupabase() || !session || !user || !receiverId) return null;
     let saved: {
@@ -1006,7 +1034,7 @@ export const backend = {
   },
 
   async refreshCollectorComparisons(): Promise<CollectorComparison[]> {
-    const session = readSupabaseSession();
+    const session = await getActiveSupabaseSession();
     if (!usingSupabase() || !session) {
       return backend.getCollectorComparisons(backend.loadStickers());
     }

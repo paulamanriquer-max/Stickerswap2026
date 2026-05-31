@@ -271,36 +271,28 @@ export default function App() {
     setChatError('');
     backend.track('message_sent', { target: username, type: 'private' });
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      sender: 'You',
-      timestamp: new Date(),
-      isOwn: true,
-    };
-
-    setConversations(prev => {
-      const existingConv = prev.find(c => c.username === username);
-      if (existingConv) {
-        return prev.map(c =>
-          c.username === username
-            ? { ...c, messages: [...c.messages, newMessage], lastMessage: text, lastMessageTime: new Date() }
-            : c
-        );
-      } else {
-        return [...prev, { userId: resolvedReceiverId, username, messages: [newMessage], lastMessage: text, lastMessageTime: new Date() }];
-      }
-    });
     void backend.sendPrivateMessage(resolvedReceiverId, text)
       .then((saved) => {
         if (!saved) {
           setChatError('Message could not send. Check your connection and try again.');
           return;
         }
+        setConversations(prev => {
+          const existingConv = prev.find(c => c.username === username);
+          if (existingConv) {
+            return prev.map(c =>
+              c.username === username
+                ? { ...c, messages: [...c.messages, saved], lastMessage: text, lastMessageTime: saved.timestamp }
+                : c
+            );
+          }
+          return [...prev, { userId: resolvedReceiverId, username, messages: [saved], lastMessage: text, lastMessageTime: saved.timestamp }];
+        });
         return backend.loadPrivateMessagesRemote().then(setConversations);
       })
-      .catch(() => {
-        setChatError('Message could not send. Check your connection and try again.');
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : '';
+        setChatError(`Message could not send. ${message || 'Check your connection and try again.'}`);
       });
   };
 
@@ -314,10 +306,12 @@ export default function App() {
           setChatError('Message could not send. Check your connection and try again.');
           return;
         }
+        setPublicMessages(prev => [...prev, saved]);
         return backend.loadPublicMessagesRemote().then(setPublicMessages);
       })
-      .catch(() => {
-        setChatError('Message could not send. Check your connection and try again.');
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : '';
+        setChatError(`Message could not send. ${message || 'Check your connection and try again.'}`);
       });
   };
 

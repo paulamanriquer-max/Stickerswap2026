@@ -30,6 +30,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
   const [passwordError, setPasswordError] = useState(false);
   const [recoveryAnswerError, setRecoveryAnswerError] = useState(false);
   const [accountExistsError, setAccountExistsError] = useState(false);
+  const [formMessage, setFormMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateAccountStep = async () => {
@@ -47,6 +48,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
   const handleContinue = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isSubmitting) return;
+    setFormMessage('');
     setIsSubmitting(true);
     if (await validateAccountStep()) setStep('recovery');
     setIsSubmitting(false);
@@ -55,6 +57,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
   const handleCreateAccount = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isSubmitting) return;
+    setFormMessage('');
     setIsSubmitting(true);
     if (!await validateAccountStep()) {
       setStep('account');
@@ -68,9 +71,22 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
       return;
     }
 
-    const created = await onCreateAccount?.(name.trim(), email.trim(), password, recoveryQuestion, recoveryAnswer) ?? false;
-    if (!created) {
-      setAccountExistsError(true);
+    try {
+      const created = await onCreateAccount?.(name.trim(), email.trim(), password, recoveryQuestion, recoveryAnswer) ?? false;
+      if (!created) {
+        setAccountExistsError(true);
+        setStep('account');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'ACCOUNT_EXISTS') {
+        setAccountExistsError(true);
+        setStep('account');
+      } else if (message === 'ACCOUNT_CONFIRM_EMAIL') {
+        setFormMessage('Check your email to confirm your account, then come back and log in.');
+      } else {
+        setFormMessage('We could not create your account. Check your connection and try again.');
+      }
       setStep('account');
     }
     setIsSubmitting(false);
@@ -230,6 +246,12 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
               />
               {recoveryAnswerError && <p className="mt-1.5 text-xs text-destructive">Enter an answer for account recovery</p>}
             </div>
+          </div>
+        )}
+
+        {formMessage && (
+          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-foreground">
+            {formMessage}
           </div>
         )}
       </form>

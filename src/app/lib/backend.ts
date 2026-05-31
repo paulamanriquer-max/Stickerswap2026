@@ -350,9 +350,11 @@ export const backend = {
         recovery_question: recoveryQuestion,
         recovery_answer_digest: recoveryAnswerDigest(normalizedEmail, recoveryAnswer),
       });
-      const auth = signUp.access_token
-        ? signUp
-        : await supabaseLogIn(normalizedEmail, password);
+      if (!signUp.access_token) {
+        throw new Error('ACCOUNT_CONFIRM_EMAIL');
+      }
+
+      const auth = signUp;
       const accessToken = auth.access_token;
       const userId = auth.user?.id;
       if (!accessToken || !userId) throw new Error('ACCOUNT_NOT_READY');

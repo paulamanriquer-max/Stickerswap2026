@@ -2,7 +2,7 @@ import { TeamCard } from '../components/TeamCard';
 import { SearchBar } from '../components/SearchBar';
 import { StickerCard } from '../components/StickerCard';
 import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { worldCupTeams } from '../data/teams';
 import { getPlayerByCode, getPlayersByTeam } from '../data/players';
 import { StickerStatus } from '../lib/stickerState';
@@ -24,6 +24,7 @@ interface MyAlbumScreenProps {
 
 type Subpage = 'owned' | 'missing' | 'duplicates' | null;
 type BulkAction = 'owned' | 'duplicate' | 'missing';
+const PAGE_SIZE = 80;
 
 function StickerGroup({
   teamCode,
@@ -132,15 +133,28 @@ function SubpageView({
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<BulkAction | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const filtered = stickers.filter(s =>
-    s.code.toLowerCase().includes(search.toLowerCase()) ||
-    (getPlayerByCode(s.code)?.name || '').toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase();
+    return stickers.filter(s =>
+      s.code.toLowerCase().includes(query) ||
+      (getPlayerByCode(s.code)?.name || '').toLowerCase().includes(query)
+    );
+  }, [search, stickers]);
+
+  const visibleStickers = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount]
   );
 
-  const teamCodes = worldCupTeams
-    .map(team => team.code)
-    .filter(code => filtered.some(sticker => getStickerSectionCode(sticker.code) === code));
+  const visibleTeamCodes = useMemo(
+    () => worldCupTeams
+      .map(team => team.code)
+      .filter(code => visibleStickers.some(sticker => getStickerSectionCode(sticker.code) === code)),
+    [visibleStickers]
+  );
   const bulkEnabled = subpage === 'missing' || subpage === 'duplicates';
   const selectedCount = selectedCodes.size;
   const actionLabel = pendingAction === 'owned'
@@ -153,6 +167,26 @@ function SubpageView({
     : pendingAction === 'owned'
       ? 'This will remove missing or duplicate status and keep these stickers as owned.'
       : 'This will remove owned and duplicate counts, then move these stickers back to missing.';
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, subpage, stickers.length]);
+
+  useEffect(() => {
+    const marker = loadMoreRef.current;
+    if (!marker || visibleCount >= filtered.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount(count => Math.min(count + PAGE_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: '600px 0px' }
+    );
+    observer.observe(marker);
+    return () => observer.disconnect();
+  }, [filtered.length, visibleCount]);
 
   const toggleCode = (code: string) => {
     setSelectedCodes(prev => {
@@ -270,11 +304,11 @@ function SubpageView({
             </p>
           </div>
         ) : (
-          teamCodes.map(code => (
+          visibleTeamCodes.map(code => (
             <StickerGroup
               key={code}
               teamCode={code}
-              stickers={filtered.filter(s => getStickerSectionCode(s.code) === code)}
+              stickers={visibleStickers.filter(s => getStickerSectionCode(s.code) === code)}
               selectable={isSelecting}
               selectedCodes={selectedCodes}
               onToggle={toggleCode}
@@ -283,6 +317,13 @@ function SubpageView({
               onDelete={(code) => onUpdateSticker(code, { owned: false, missing: true, duplicateCount: 0 })}
             />
           ))
+        )}
+        {visibleCount < filtered.length && (
+          <div ref={loadMoreRef} className="py-6 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Loading more stickers...
+            </p>
+          </div>
         )}
       </div>
 

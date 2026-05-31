@@ -1,4 +1,5 @@
 import { ChevronLeft, Send } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { useState, useEffect, useRef } from 'react';
 
 interface Message {
@@ -21,6 +22,7 @@ interface ChatScreenProps {
 
 export function ChatScreen({ username, messages = [], isPublic = false, canSend = true, onBack, onSendMessage, onUpgradeRequest }: ChatScreenProps) {
   const [message, setMessage] = useState('');
+  const [viewportStyle, setViewportStyle] = useState<CSSProperties>({ height: '100dvh' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -30,6 +32,31 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const updateViewport = () => {
+      const visualViewport = window.visualViewport;
+      if (!visualViewport) {
+        setViewportStyle({ height: '100dvh' });
+        return;
+      }
+      setViewportStyle({
+        height: `${visualViewport.height}px`,
+        transform: `translateY(${visualViewport.offsetTop}px)`,
+      });
+    };
+
+    updateViewport();
+    window.visualViewport?.addEventListener('resize', updateViewport);
+    window.visualViewport?.addEventListener('scroll', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateViewport);
+      window.visualViewport?.removeEventListener('scroll', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+    };
+  }, []);
 
   const handleSend = () => {
     if (!canSend) {
@@ -51,8 +78,11 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
   };
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] bg-background flex flex-col overflow-hidden">
-      <div className="sticky top-0 z-20 shrink-0 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3 bg-background-secondary/95 backdrop-blur-xl border-b border-border/50">
+    <div
+      className="fixed inset-x-0 top-0 z-[100] mx-auto w-full max-w-md bg-background flex flex-col overflow-hidden"
+      style={viewportStyle}
+    >
+      <div className="shrink-0 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3 bg-background-secondary/95 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -116,7 +146,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
         </div>
       )}
 
-      <div className="sticky bottom-0 z-20 shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background-secondary/95 backdrop-blur-xl border-t border-border/50">
+      <div className="shrink-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-background-secondary/95 backdrop-blur-xl border-t border-border/50">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -130,7 +160,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
             }}
             placeholder="Type a message..."
             disabled={!canSend}
-            className="flex-1 h-11 px-4 bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-sm"
+            className="min-w-0 flex-1 h-11 px-4 bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-sm"
           />
           <button
             onClick={handleSend}

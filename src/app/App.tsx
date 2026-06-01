@@ -78,6 +78,16 @@ const PUBLIC_ROOM_NAME = `${MVP_CITY} Community`;
 const LAST_SEEN_PUBLIC_CHAT_KEY = 'stickerswap.lastSeenPublicChatAt';
 const LAST_SEEN_PRIVATE_CHAT_KEY = 'stickerswap.lastSeenPrivateChatAt';
 
+const tabForScreen = (screen: Screen): Tab | null => {
+  if (screen === 'album' || screen === 'team-detail') return 'album';
+  if (screen === 'matches' || screen === 'match-detail') return 'matches';
+  if (screen === 'chats' || screen === 'chat') return 'chats';
+  if (screen === 'profile' || screen === 'edit-profile' || screen === 'location-settings' || screen === 'notifications' || screen === 'privacy-security') {
+    return 'profile';
+  }
+  return null;
+};
+
 const messageTime = (message: Message) => new Date(message.timestamp).getTime();
 const latestMessageTime = (messages: Message[]) => (
   messages.reduce((latest, message) => Math.max(latest, messageTime(message)), 0)
@@ -111,10 +121,61 @@ export default function App() {
   const [lastSeenPrivateChatAt, setLastSeenPrivateChatAt] = useState<Record<string, number>>(() => loadLastSeenPrivate());
   const notifiedMessageIdsRef = useRef<Set<string>>(new Set());
   const hasInitializedNotificationsRef = useRef(false);
+  const currentScreenRef = useRef(currentScreen);
+  const skipNextHistoryPushRef = useRef(false);
+  const lastHistoryScreenRef = useRef<Screen | null>(null);
 
   useEffect(() => {
     backend.track('app_open', { user_id: user?.id, anonymous: user?.isAnonymous ?? true });
   }, []);
+
+  useEffect(() => {
+    currentScreenRef.current = currentScreen;
+  }, [currentScreen]);
+
+  useEffect(() => {
+    const state = { stickerswap: true, screen: currentScreenRef.current };
+    window.history.replaceState(state, '', window.location.href);
+    lastHistoryScreenRef.current = currentScreenRef.current;
+
+    const handleBrowserBack = (event: PopStateEvent) => {
+      const nextScreen = event.state?.stickerswap ? event.state.screen as Screen : null;
+
+      if (!nextScreen) {
+        window.history.pushState(
+          { stickerswap: true, screen: currentScreenRef.current },
+          '',
+          window.location.href
+        );
+        return;
+      }
+
+      skipNextHistoryPushRef.current = true;
+      setCurrentScreen(nextScreen);
+      const nextTab = tabForScreen(nextScreen);
+      if (nextTab) setActiveTab(nextTab);
+    };
+
+    window.addEventListener('popstate', handleBrowserBack);
+    return () => window.removeEventListener('popstate', handleBrowserBack);
+  }, []);
+
+  useEffect(() => {
+    if (skipNextHistoryPushRef.current) {
+      skipNextHistoryPushRef.current = false;
+      lastHistoryScreenRef.current = currentScreen;
+      return;
+    }
+
+    if (lastHistoryScreenRef.current === currentScreen) return;
+
+    window.history.pushState(
+      { stickerswap: true, screen: currentScreen },
+      '',
+      window.location.href
+    );
+    lastHistoryScreenRef.current = currentScreen;
+  }, [currentScreen]);
 
   useEffect(() => {
     if (!user || !['chats', 'chat'].includes(currentScreen)) return;
@@ -314,6 +375,8 @@ export default function App() {
     setPreviousScreen(null);
     setActiveTab('matches');
     setHasCompletedOnboarding(false);
+    window.history.replaceState({ stickerswap: true, screen: 'welcome' }, '', window.location.href);
+    lastHistoryScreenRef.current = 'welcome';
     setCurrentScreen('welcome');
   };
 
@@ -344,7 +407,9 @@ export default function App() {
   };
 
   const handleBack = () => {
-    if (previousScreen) {
+    if (window.history.state?.stickerswap) {
+      window.history.back();
+    } else if (previousScreen) {
       setCurrentScreen(previousScreen);
       setPreviousScreen(null);
     }

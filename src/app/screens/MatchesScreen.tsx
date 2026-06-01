@@ -104,8 +104,8 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
                   key={collector.id}
                   username={collector.username}
                   matchScore={collector.matchScore}
-                  theyHaveYouNeed={collector.theyHaveYouNeed}
-                  youHaveTheyNeed={collector.youHaveTheyNeed}
+                  matchesCount={collector.matches.length}
+                  theyNeedCount={collector.theyNeed.length}
                   onClick={() => onCollectorClick(collector.id)}
                   city={city}
                 />

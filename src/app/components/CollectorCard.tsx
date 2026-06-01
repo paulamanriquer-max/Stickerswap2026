@@ -5,8 +5,8 @@ import { MatchScoreBadge } from './MatchScoreBadge';
 interface CollectorCardProps {
   username: string;
   matchScore: number;
-  theyHaveYouNeed: number;
-  youHaveTheyNeed: number;
+  matchesCount: number;
+  theyNeedCount: number;
   onClick?: () => void;
   city: string;
 }
@@ -14,8 +14,8 @@ interface CollectorCardProps {
 export function CollectorCard({
   username,
   matchScore,
-  theyHaveYouNeed,
-  youHaveTheyNeed,
+  matchesCount,
+  theyNeedCount,
   onClick,
   city,
 }: CollectorCardProps) {
@@ -40,11 +40,11 @@ export function CollectorCard({
 
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col items-center justify-center px-3 py-2 bg-card/50 backdrop-blur-xl rounded-lg border border-border/50 shadow-lg">
-            <div className="text-xl font-bold text-foreground">{theyHaveYouNeed}</div>
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">You need</div>
+            <div className="text-xl font-bold text-foreground">{matchesCount}</div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Matches</div>
           </div>
           <div className="flex flex-col items-center justify-center px-3 py-2 bg-card/50 backdrop-blur-xl rounded-lg border border-border/50 shadow-lg">
-            <div className="text-xl font-bold text-foreground">{youHaveTheyNeed}</div>
+            <div className="text-xl font-bold text-foreground">{theyNeedCount}</div>
             <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">They need</div>
           </div>
         </div>

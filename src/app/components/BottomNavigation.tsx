@@ -11,7 +11,7 @@ interface BottomNavigationProps {
 export function BottomNavigation({ activeTab, onTabChange, chatUnreadCount = 0 }: BottomNavigationProps) {
   const tabs = [
     { id: 'album' as Tab, label: 'Album', icon: BookOpen },
-    { id: 'matches' as Tab, label: 'Matches', icon: Zap },
+    { id: 'matches' as Tab, label: 'Collectors', icon: Zap },
     { id: 'chats' as Tab, label: 'Chats', icon: MessageCircle },
     { id: 'profile' as Tab, label: 'Profile', icon: User },
   ];

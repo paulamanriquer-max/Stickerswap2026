@@ -36,7 +36,7 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
     };
   }, [stickers]);
 
-  const trueMatches = collectors.filter(collector => collector.theyHaveYouNeed > 0);
+  const trueMatches = collectors.filter(collector => collector.matches.length > 0);
   const visibleCollectors = view === 'matches' ? trueMatches : collectors;
   const filteredCollectors = visibleCollectors.filter(c =>
     c.username.toLowerCase().includes(search.toLowerCase())

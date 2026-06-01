@@ -136,6 +136,7 @@ export default function App() {
   useEffect(() => {
     const state = { stickerswap: true, screen: currentScreenRef.current };
     window.history.replaceState(state, '', window.location.href);
+    window.history.pushState(state, '', window.location.href);
     lastHistoryScreenRef.current = currentScreenRef.current;
 
     const handleBrowserBack = (event: PopStateEvent) => {

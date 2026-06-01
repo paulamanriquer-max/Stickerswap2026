@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { AlbumSelectionScreen } from './screens/AlbumSelectionScreen';
 import { MyAlbumScreen } from './screens/MyAlbumScreen';
@@ -75,6 +75,21 @@ interface Conversation {
 
 const MVP_CITY = 'Kansas City';
 const PUBLIC_ROOM_NAME = `${MVP_CITY} Community`;
+const LAST_SEEN_PUBLIC_CHAT_KEY = 'stickerswap.lastSeenPublicChatAt';
+const LAST_SEEN_PRIVATE_CHAT_KEY = 'stickerswap.lastSeenPrivateChatAt';
+
+const messageTime = (message: Message) => new Date(message.timestamp).getTime();
+const latestMessageTime = (messages: Message[]) => (
+  messages.reduce((latest, message) => Math.max(latest, messageTime(message)), 0)
+);
+
+const loadLastSeenPrivate = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LAST_SEEN_PRIVATE_CHAT_KEY) || '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+};
 
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(() => backend.loadUser());
@@ -92,6 +107,10 @@ export default function App() {
   const [publicMessages, setPublicMessages] = useState<Message[]>(() => backend.loadPublicMessages());
   const [upgradePrompt, setUpgradePrompt] = useState<{ title?: string; message?: string } | null>(null);
   const [chatError, setChatError] = useState('');
+  const [lastSeenPublicChatAt, setLastSeenPublicChatAt] = useState(() => Number(localStorage.getItem(LAST_SEEN_PUBLIC_CHAT_KEY) || 0));
+  const [lastSeenPrivateChatAt, setLastSeenPrivateChatAt] = useState<Record<string, number>>(() => loadLastSeenPrivate());
+  const notifiedMessageIdsRef = useRef<Set<string>>(new Set());
+  const hasInitializedNotificationsRef = useRef(false);
 
   useEffect(() => {
     backend.track('app_open', { user_id: user?.id, anonymous: user?.isAnonymous ?? true });
@@ -129,6 +148,90 @@ export default function App() {
   useEffect(() => {
     backend.savePublicMessages(publicMessages);
   }, [publicMessages]);
+
+  const privateUnreadByUser = useMemo(() => {
+    return conversations.reduce<Record<string, number>>((counts, conversation) => {
+      const key = conversation.userId || conversation.username;
+      const seenAt = lastSeenPrivateChatAt[key] || 0;
+      const unread = conversation.messages.filter(message => !message.isOwn && messageTime(message) > seenAt).length;
+      if (unread > 0) counts[key] = unread;
+      return counts;
+    }, {});
+  }, [conversations, lastSeenPrivateChatAt]);
+
+  const publicUnreadCount = useMemo(() => (
+    publicMessages.filter(message => !message.isOwn && messageTime(message) > lastSeenPublicChatAt).length
+  ), [publicMessages, lastSeenPublicChatAt]);
+
+  const totalUnreadChats = publicUnreadCount + Object.values(privateUnreadByUser).reduce((sum, count) => sum + count, 0);
+
+  const markPublicChatRead = () => {
+    const nextSeenAt = Math.max(Date.now(), latestMessageTime(publicMessages));
+    setLastSeenPublicChatAt(nextSeenAt);
+    localStorage.setItem(LAST_SEEN_PUBLIC_CHAT_KEY, String(nextSeenAt));
+  };
+
+  const markPrivateChatRead = (username: string, userId?: string) => {
+    const key = userId || conversations.find(conversation => conversation.username === username)?.userId || username;
+    const messages = conversations.find(conversation => conversation.username === username)?.messages || [];
+    const nextSeenAt = Math.max(Date.now(), latestMessageTime(messages));
+    setLastSeenPrivateChatAt(prev => {
+      const next = { ...prev, [key]: nextSeenAt };
+      localStorage.setItem(LAST_SEEN_PRIVATE_CHAT_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (currentScreen !== 'chat' || !selectedChatUser) return;
+    if (isPublicRoom(selectedChatUser)) markPublicChatRead();
+    else markPrivateChatRead(selectedChatUser, selectedChatUserId);
+  }, [currentScreen, selectedChatUser, selectedChatUserId, publicMessages, conversations]);
+
+  useEffect(() => {
+    const incomingMessages = [
+      ...publicMessages
+        .filter(message => !message.isOwn)
+        .map(message => ({
+          id: `public-${message.id}`,
+          title: `${message.sender} in ${PUBLIC_ROOM_NAME}`,
+          body: message.text,
+        })),
+      ...conversations.flatMap(conversation =>
+        conversation.messages
+          .filter(message => !message.isOwn)
+          .map(message => ({
+            id: `private-${message.id}`,
+            title: conversation.username,
+            body: message.text,
+          }))
+      ),
+    ];
+
+    if (!hasInitializedNotificationsRef.current) {
+      incomingMessages.forEach(message => notifiedMessageIdsRef.current.add(message.id));
+      hasInitializedNotificationsRef.current = true;
+      return;
+    }
+
+    const preferences = backend.loadNotificationPreferences();
+    const canNotify =
+      preferences.pushEnabled &&
+      preferences.messages &&
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'granted';
+
+    incomingMessages.forEach(message => {
+      if (notifiedMessageIdsRef.current.has(message.id)) return;
+      notifiedMessageIdsRef.current.add(message.id);
+      if (!canNotify) return;
+      try {
+        new Notification(message.title, { body: message.body });
+      } catch {
+        // Browser permission can exist even when the current device blocks the notification UI.
+      }
+    });
+  }, [publicMessages, conversations]);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
@@ -496,6 +599,8 @@ export default function App() {
             conversations={conversations}
             publicMessages={publicMessages}
             publicRoomName={PUBLIC_ROOM_NAME}
+            publicUnreadCount={publicUnreadCount}
+            privateUnreadByUser={privateUnreadByUser}
             city={MVP_CITY}
             canUsePrivateChat={Boolean(user?.email)}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
@@ -510,6 +615,8 @@ export default function App() {
               }
               setSelectedChatUser(username);
               setSelectedChatUserId(publicRoom ? '' : userId || '');
+              if (publicRoom) markPublicChatRead();
+              else markPrivateChatRead(username, userId);
               setChatError('');
               setCurrentScreen('chat');
             }}
@@ -581,6 +688,7 @@ export default function App() {
           <BottomNavigation
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            chatUnreadCount={totalUnreadChats}
           />
         )}
 

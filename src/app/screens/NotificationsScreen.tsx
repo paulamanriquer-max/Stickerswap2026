@@ -15,7 +15,7 @@ const getDevicePermission = (): NotificationPermissionState => {
 };
 
 const permissionLabel = (permission: NotificationPermissionState, isFilePreview: boolean) => {
-  if (permission === 'granted') return 'Notifications are enabled on this device';
+  if (permission === 'granted') return 'Notifications are enabled while the app is open or in the background';
   if (permission === 'denied') return 'Notifications are blocked in browser settings';
   if (permission === 'unsupported') return 'Notifications are not supported in this preview';
   if (isFilePreview) return 'Device permission works in the hosted test build';
@@ -156,7 +156,7 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
             <ChannelRow
               icon={<MessageCircle className="w-5 h-5 text-primary flex-shrink-0" />}
               title="Messages"
-              description="Public replies and private chat messages"
+              description="Public and private messages, with unread badges"
               enabled={preferences.messages}
               disabled={channelsDisabled}
               onChange={() => updatePreference('messages')}

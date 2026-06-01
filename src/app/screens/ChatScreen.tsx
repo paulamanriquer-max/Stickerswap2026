@@ -121,6 +121,11 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
                     : 'bg-card/50 backdrop-blur-xl border border-border/50 text-foreground rounded-bl-sm'
                 }`}
               >
+                {isPublic && !msg.isOwn && (
+                  <p className="mb-1 text-[11px] font-bold leading-none text-primary">
+                    {msg.sender}
+                  </p>
+                )}
                 <p className="break-words text-sm leading-5">{msg.text}</p>
                 <p
                   className={`text-[10px] mt-1 ${

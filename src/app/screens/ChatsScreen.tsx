@@ -21,6 +21,8 @@ interface ChatsScreenProps {
   conversations: Conversation[];
   publicMessages: Message[];
   publicRoomName: string;
+  publicUnreadCount?: number;
+  privateUnreadByUser?: Record<string, number>;
   onChatClick: (username: string, userId?: string) => void;
   onUpgradeRequest: () => void;
   canUsePrivateChat: boolean;
@@ -29,7 +31,17 @@ interface ChatsScreenProps {
 
 type ChatView = 'public' | 'private';
 
-export function ChatsScreen({ conversations, publicMessages, publicRoomName, onChatClick, onUpgradeRequest, canUsePrivateChat, city }: ChatsScreenProps) {
+export function ChatsScreen({
+  conversations,
+  publicMessages,
+  publicRoomName,
+  publicUnreadCount = 0,
+  privateUnreadByUser = {},
+  onChatClick,
+  onUpgradeRequest,
+  canUsePrivateChat,
+  city,
+}: ChatsScreenProps) {
   const [view, setView] = useState<ChatView>('public');
   const formatTimestamp = (date: Date) => {
     const now = new Date();
@@ -100,7 +112,14 @@ export function ChatsScreen({ conversations, publicMessages, publicRoomName, onC
                 <Users className="w-6 h-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <h3 className="font-semibold text-foreground text-sm">{publicRoomName}</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-semibold text-foreground text-sm">{publicRoomName}</h3>
+                  {publicUnreadCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                      {publicUnreadCount > 9 ? '9+' : publicUnreadCount}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {publicMessages.length === 0
                     ? 'No public messages yet'
@@ -153,6 +172,9 @@ export function ChatsScreen({ conversations, publicMessages, publicRoomName, onC
             ) : (
               <div className="space-y-2">
                 {sortedConversations.map((conversation) => (
+                  (() => {
+                    const unreadCount = privateUnreadByUser[conversation.userId || conversation.username] || 0;
+                    return (
                   <button
                     key={conversation.username}
                     onClick={() => onChatClick(conversation.username, conversation.userId)}
@@ -166,11 +188,18 @@ export function ChatsScreen({ conversations, publicMessages, publicRoomName, onC
                     <div className="flex-1 min-w-0 text-left">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-semibold text-foreground text-sm">{conversation.username}</h3>
-                        {conversation.lastMessageTime && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatTimestamp(conversation.lastMessageTime)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {conversation.lastMessageTime && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatTimestamp(conversation.lastMessageTime)}
+                            </span>
+                          )}
+                          {unreadCount > 0 && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground truncate">
@@ -179,6 +208,8 @@ export function ChatsScreen({ conversations, publicMessages, publicRoomName, onC
                       </div>
                     </div>
                   </button>
+                    );
+                  })()
                 ))}
               </div>
             )}

@@ -5,9 +5,10 @@ type Tab = 'album' | 'matches' | 'chats' | 'profile';
 interface BottomNavigationProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
+  chatUnreadCount?: number;
 }
 
-export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
+export function BottomNavigation({ activeTab, onTabChange, chatUnreadCount = 0 }: BottomNavigationProps) {
   const tabs = [
     { id: 'album' as Tab, label: 'Album', icon: BookOpen },
     { id: 'matches' as Tab, label: 'Matches', icon: Zap },
@@ -34,6 +35,11 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
             <Icon className={`relative w-5 h-5 transition-all ${
               activeTab === id ? 'scale-110' : 'scale-100'
             }`} />
+            {id === 'chats' && chatUnreadCount > 0 && (
+              <span className="absolute right-5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold leading-none text-destructive-foreground">
+                {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+              </span>
+            )}
             <span className={`relative text-[9px] transition-all ${
               activeTab === id ? 'font-bold' : 'font-medium'
             }`}>

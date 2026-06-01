@@ -1,6 +1,7 @@
 import { CollectorCard } from '../components/CollectorCard';
 import { EmptyState } from '../components/EmptyState';
 import { SearchBar } from '../components/SearchBar';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { backend, CollectorComparison, StickerState } from '../lib/backend';
@@ -11,8 +12,11 @@ interface MatchesScreenProps {
   stickers: StickerState[];
 }
 
+type CollectorView = 'matches' | 'all';
+
 export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScreenProps) {
   const [search, setSearch] = useState('');
+  const [view, setView] = useState<CollectorView>('matches');
   const [collectors, setCollectors] = useState<CollectorComparison[]>(() => backend.getCollectorComparisons(stickers));
 
   useEffect(() => {
@@ -30,9 +34,15 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
     };
   }, [stickers]);
 
-  const filteredCollectors = collectors.filter(c =>
+  const trueMatches = collectors.filter(collector => collector.theyHaveYouNeed > 0);
+  const visibleCollectors = view === 'matches' ? trueMatches : collectors;
+  const filteredCollectors = visibleCollectors.filter(c =>
     c.username.toLowerCase().includes(search.toLowerCase())
   );
+  const emptyTitle = view === 'matches' ? 'No sticker matches yet' : 'No collectors found';
+  const emptyDescription = view === 'matches'
+    ? 'No collector currently has duplicates from your missing list. Switch to All collectors to browse everyone who has joined.'
+    : 'No other Kansas City collectors have joined yet. New testers will appear here after they create accounts.';
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -53,16 +63,31 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
           />
         </div>
 
+        <div className="mb-4">
+          <SegmentedControl
+            options={[
+              { value: 'matches', label: `Matches (${trueMatches.length})` },
+              { value: 'all', label: `All collectors (${collectors.length})` },
+            ]}
+            value={view}
+            onChange={(value) => setView(value as CollectorView)}
+          />
+        </div>
+
         {filteredCollectors.length === 0 ? (
           <EmptyState
             icon={<MapPin className="w-16 h-16" />}
-            title="No collectors found"
-            description="No other Kansas City collectors have joined yet. New testers will appear here after they create accounts."
+            title={emptyTitle}
+            description={emptyDescription}
           />
         ) : (
           <>
             <div className="flex items-center justify-between mb-2">
-              <h3>{filteredCollectors.length} collectors in Kansas City</h3>
+              <h3>
+                {view === 'matches'
+                  ? `${filteredCollectors.length} sticker match${filteredCollectors.length === 1 ? '' : 'es'}`
+                  : `${filteredCollectors.length} collectors in Kansas City`}
+              </h3>
               <div className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-full">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-muted-foreground">

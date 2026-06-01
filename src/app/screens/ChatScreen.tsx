@@ -112,8 +112,13 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
           messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
+              className={`flex items-end gap-2 ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
             >
+              {isPublic && !msg.isOwn && (
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                  {msg.sender.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2 ${
                   msg.isOwn
@@ -121,9 +126,11 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
                     : 'bg-card/50 backdrop-blur-xl border border-border/50 text-foreground rounded-bl-sm'
                 }`}
               >
-                {isPublic && !msg.isOwn && (
-                  <p className="mb-1 text-[11px] font-bold leading-none text-primary">
-                    {msg.sender}
+                {isPublic && (
+                  <p className={`mb-1 text-[11px] font-bold leading-none ${
+                    msg.isOwn ? 'text-primary-foreground/80' : 'text-primary'
+                  }`}>
+                    {msg.isOwn ? 'You' : msg.sender}
                   </p>
                 )}
                 <p className="break-words text-sm leading-5">{msg.text}</p>

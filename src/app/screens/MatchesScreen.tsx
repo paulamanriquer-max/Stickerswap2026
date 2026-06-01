@@ -22,7 +22,9 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
   useEffect(() => {
     let isMounted = true;
     setCollectors(backend.getCollectorComparisons(stickers));
-    void backend.refreshCollectorComparisons()
+    void backend.saveStickers(stickers)
+      .catch(() => {})
+      .then(() => backend.refreshCollectorComparisons())
       .then(nextCollectors => {
         if (isMounted) setCollectors(nextCollectors);
       })
@@ -49,8 +51,8 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
       {/* Header */}
       <div className="px-4 pt-6 pb-2">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Matches</h1>
-          <p className="text-sm text-muted-foreground">Kansas City collectors sorted by best match</p>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Collectors</h1>
+          <p className="text-sm text-muted-foreground">Browse Kansas City collectors and trade matches</p>
         </div>
       </div>
 

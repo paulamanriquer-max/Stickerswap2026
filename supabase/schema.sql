@@ -300,14 +300,21 @@ as $$
   with me as (
     select * from public.profiles where id = auth.uid()
   ),
-  my_stickers as (
-    select * from public.user_stickers where user_id = auth.uid()
-  ),
   my_missing as (
-    select sticker_code from my_stickers where missing = true
+    select stickers.code as sticker_code
+    from public.stickers
+    left join public.user_stickers
+      on user_stickers.user_id = auth.uid()
+      and user_stickers.sticker_code = stickers.code
+    where coalesce(user_stickers.owned, false) = false
+      and coalesce(user_stickers.duplicate_count, 0) = 0
   ),
   my_duplicates as (
-    select sticker_code from my_stickers where owned = true and duplicate_count > 0
+    select sticker_code
+    from public.user_stickers
+    where user_id = auth.uid()
+      and owned = true
+      and duplicate_count > 0
   ),
   visible_users as (
     select
@@ -325,31 +332,56 @@ as $$
         or public.distance_km(me.latitude, me.longitude, p.latitude, p.longitude) <= p_radius_km
       )
   ),
+  other_missing as (
+    select
+      visible_users.id as user_id,
+      stickers.code as sticker_code
+    from visible_users
+    cross join public.stickers
+    left join public.user_stickers
+      on user_stickers.user_id = visible_users.id
+      and user_stickers.sticker_code = stickers.code
+    where coalesce(user_stickers.owned, false) = false
+      and coalesce(user_stickers.duplicate_count, 0) = 0
+  ),
   scored as (
     select
       visible_users.id,
       visible_users.username,
       visible_users.email,
       visible_users.distance_km,
-      array_remove(array_agg(distinct other_duplicates.sticker_code), null) as matches,
+      (
+        select array_agg(distinct user_stickers.sticker_code order by user_stickers.sticker_code)
+        from public.user_stickers
+        join my_missing
+          on my_missing.sticker_code = user_stickers.sticker_code
+        where user_stickers.user_id = visible_users.id
+          and user_stickers.owned = true
+          and user_stickers.duplicate_count > 0
+      ) as matches,
       (select array_agg(sticker_code order by sticker_code) from my_missing) as you_need,
-      array_remove(array_agg(distinct other_missing.sticker_code), null) as they_need,
-      count(distinct other_duplicates.sticker_code)::int as they_have_you_need,
-      (count(distinct my_duplicates.sticker_code) filter (where other_missing.sticker_code is not null))::int as you_have_they_need
+      (
+        select array_agg(sticker_code order by sticker_code)
+        from other_missing
+        where other_missing.user_id = visible_users.id
+      ) as they_need,
+      (
+        select count(distinct user_stickers.sticker_code)::int
+        from public.user_stickers
+        join my_missing
+          on my_missing.sticker_code = user_stickers.sticker_code
+        where user_stickers.user_id = visible_users.id
+          and user_stickers.owned = true
+          and user_stickers.duplicate_count > 0
+      ) as they_have_you_need,
+      (
+        select count(distinct my_duplicates.sticker_code)::int
+        from my_duplicates
+        join other_missing
+          on other_missing.sticker_code = my_duplicates.sticker_code
+        where other_missing.user_id = visible_users.id
+      ) as you_have_they_need
     from visible_users
-    left join my_missing
-      on true
-    left join public.user_stickers other_duplicates
-      on other_duplicates.user_id = visible_users.id
-      and other_duplicates.sticker_code = my_missing.sticker_code
-      and other_duplicates.owned = true
-      and other_duplicates.duplicate_count > 0
-    left join public.user_stickers other_missing
-      on other_missing.user_id = visible_users.id
-      and other_missing.missing = true
-    left join my_duplicates
-      on my_duplicates.sticker_code = other_missing.sticker_code
-    group by visible_users.id, visible_users.username, visible_users.email, visible_users.distance_km
   )
   select
     scored.id as user_id,

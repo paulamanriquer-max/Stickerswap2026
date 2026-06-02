@@ -205,6 +205,7 @@ interface SupabaseComparisonRow {
 
 interface SupabasePublicMessageRow {
   id: string;
+  user_id: string;
   message_text: string;
   created_at: string;
   profiles?: { username?: string } | { username?: string }[];
@@ -800,9 +801,13 @@ export const backend = {
   async loadPublicMessagesRemote(): Promise<StoredMessage[]> {
     const session = await getActiveSupabaseSession();
     const user = backend.loadUser();
-    if (!usingSupabase() || !session) return backend.loadPublicMessages();
+    if (!usingSupabase()) return backend.loadPublicMessages();
+    if (!session) {
+      writeJson(PUBLIC_MESSAGES_KEY, []);
+      return [];
+    }
     const rows = await supabaseRest<SupabasePublicMessageRow[]>(
-      '/rest/v1/public_messages?room_key=eq.kansas_city&select=id,message_text,created_at,profiles(username)&order=created_at.asc&limit=100',
+      '/rest/v1/public_messages?room_key=eq.kansas_city&select=id,user_id,message_text,created_at,profiles(username)&order=created_at.asc&limit=100',
       { accessToken: session.accessToken }
     );
     const messages = rows.map(row => {
@@ -812,13 +817,10 @@ export const backend = {
         text: row.message_text,
         sender: profile?.username || 'Collector',
         timestamp: new Date(row.created_at),
-        isOwn: false,
+        isOwn: row.user_id === user?.id,
         isPublic: true,
       };
-    }).map(message => ({
-      ...message,
-      isOwn: message.sender === user?.username,
-    }));
+    });
     writeJson(PUBLIC_MESSAGES_KEY, messages);
     return messages;
   },

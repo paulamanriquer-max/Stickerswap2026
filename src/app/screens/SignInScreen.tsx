@@ -47,7 +47,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
 
   return (
     <div className="h-dvh min-h-screen bg-background overflow-hidden flex flex-col">
-      <div className="px-6 pt-6 shrink-0">
+      <div className="px-6 pt-6 shrink-0 flex items-center justify-between">
         <button
           onClick={() => onNavigate?.('welcome')}
           className="flex items-center gap-2 text-muted-foreground active:scale-95 transition-transform"
@@ -55,10 +55,17 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium text-sm">Back</span>
         </button>
+        <button
+          type="button"
+          onClick={() => onNavigate?.('admin-login')}
+          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors tracking-widest uppercase"
+        >
+          Admin
+        </button>
       </div>
 
       <form onSubmit={handleLogIn} className="flex-1 min-h-0 flex flex-col px-6 pt-8 pb-4">
-        <div className="mb-8">
+        <div className="mb-7">
           <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Log in</h1>
           <p className="text-sm text-muted-foreground">Access your saved collection</p>
         </div>
@@ -132,7 +139,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </div>
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] bg-background">
+      <div className="shrink-0 px-6 pt-4 pb-[max(36px,env(safe-area-inset-bottom))] bg-background">
         <Button
           onClick={handleLogIn as any}
           fullWidth
@@ -150,13 +157,6 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
             Create account
           </button>
         </p>
-        <button
-          type="button"
-          onClick={() => onNavigate?.('admin-login')}
-          className="w-full mt-6 text-[10px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors text-center tracking-widest uppercase"
-        >
-          Admin
-        </button>
       </div>
     </div>
   );

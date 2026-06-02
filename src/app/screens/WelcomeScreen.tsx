@@ -72,12 +72,12 @@ function LogoCup() {
 export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
   return (
     <div className="h-dvh min-h-screen overflow-hidden flex flex-col" style={{ backgroundColor: "#090f1e" }}>
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 pt-8 pb-[220px]">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 pt-4 pb-4 -translate-y-3">
         <div
           className="relative rounded-lg overflow-hidden shrink-0"
           style={{
-            width: "min(280px, 70vw, 38vh)",
-            height: "min(280px, 70vw, 38vh)",
+            width: "min(260px, 70vw, 31dvh)",
+            height: "min(260px, 70vw, 31dvh)",
             backgroundColor: "#090f1f",
           }}
         >
@@ -89,7 +89,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
 
         {/* Tagline */}
         <p
-          className="text-center text-white mt-8 tracking-[2.56px] text-[16px] leading-[24px] max-w-[245px]"
+          className="text-center text-white mt-6 tracking-[2.56px] text-[16px] leading-[24px] max-w-[245px]"
           style={{ fontFamily: "var(--font-body)", fontWeight: 500 }}
         >
           CONNECTING 2026 COLLECTORS TO TRADE PANINI STICKERS
@@ -104,8 +104,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
         </div>
       </div>
 
-      {/* Sticky Buttons */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] sm:rounded-t-2xl" style={{ backgroundColor: "#090f1e" }}>
+      <div className="shrink-0 w-full px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))]" style={{ backgroundColor: "#090f1e" }}>
         <div className="flex w-full flex-col gap-3">
           <Button
             onClick={() => onNavigate?.('sign-up')}

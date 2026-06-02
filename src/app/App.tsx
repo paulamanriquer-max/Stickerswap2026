@@ -23,7 +23,7 @@ import { AdminScreen } from './screens/AdminScreen';
 import { AddEmailScreen } from './screens/AddEmailScreen';
 import { UpgradePrompt } from './components/UpgradePrompt';
 import { AppUser, backend, shouldPromptForUpgrade, StickerState } from './lib/backend';
-import { showDeviceNotification } from './lib/notificationFeedback';
+import { installNotificationFeedbackUnlock, showDeviceNotification } from './lib/notificationFeedback';
 import { applyStickerStatus, createDefaultStickerStates, normalizeStickerStates, setStickerStatus, StickerStatus } from './lib/stickerState';
 
 type Screen =
@@ -128,6 +128,7 @@ export default function App() {
 
   useEffect(() => {
     backend.track('app_open', { user_id: user?.id, anonymous: user?.isAnonymous ?? true });
+    return installNotificationFeedbackUnlock();
   }, []);
 
   useEffect(() => {
@@ -280,9 +281,7 @@ export default function App() {
     const preferences = backend.loadNotificationPreferences();
     const canNotify =
       preferences.pushEnabled &&
-      preferences.messages &&
-      typeof Notification !== 'undefined' &&
-      Notification.permission === 'granted';
+      preferences.messages;
 
     incomingMessages.forEach(message => {
       if (notifiedMessageIdsRef.current.has(message.id)) return;

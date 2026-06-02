@@ -14,12 +14,15 @@ const getDevicePermission = (): NotificationPermissionState => {
   return Notification.permission;
 };
 
-const permissionLabel = (permission: NotificationPermissionState, isFilePreview: boolean) => {
-  if (permission === 'granted') return 'Alerts, sound, and vibration are enabled on this device';
-  if (permission === 'denied') return 'Notifications are blocked in browser settings';
-  if (permission === 'unsupported') return 'Notifications are not supported in this preview';
-  if (isFilePreview) return 'Device permission works in the hosted test build';
-  return 'Turn on to allow notifications on this device';
+const permissionLabel = (permission: NotificationPermissionState, isFilePreview: boolean, alertsEnabled: boolean) => {
+  if (alertsEnabled && permission === 'granted') return 'Banner alerts, sound, and vibration are on when supported';
+  if (alertsEnabled && permission === 'denied') return 'Sound is on. Browser banners are blocked in settings';
+  if (alertsEnabled && permission === 'unsupported') return 'Sound is on. Browser banners are not supported here';
+  if (alertsEnabled) return 'Sound and vibration are on when supported';
+  if (permission === 'denied') return 'Browser banners are blocked, but sound can still be turned on';
+  if (permission === 'unsupported') return 'Browser banners are not supported here, but sound can still be turned on';
+  if (isFilePreview) return 'Device alerts work best in the hosted test build';
+  return 'Turn on lightweight alerts for this device';
 };
 
 function ChannelRow({
@@ -60,8 +63,8 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
 
   const isFilePreview = useMemo(() => typeof window !== 'undefined' && window.location.protocol === 'file:', []);
   const canRequestPermission = permission !== 'unsupported' && permission !== 'denied';
-  const pushEnabled = preferences.pushEnabled && permission === 'granted';
-  const channelsDisabled = !pushEnabled;
+  const alertsEnabled = preferences.pushEnabled;
+  const channelsDisabled = !alertsEnabled;
 
   const savePreferences = (next: NotificationPreferences) => {
     setPreferences(next);
@@ -73,15 +76,17 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
   };
 
   const handlePushToggle = async () => {
-    if (pushEnabled) {
+    if (alertsEnabled) {
       const next = { ...preferences, pushEnabled: false, permission };
       savePreferences(next);
-      setStatusMessage('Notifications are off for this device.');
+      setStatusMessage('Device alerts are off.');
       return;
     }
 
     if (!canRequestPermission) {
-      setStatusMessage(permissionLabel(permission, isFilePreview));
+      const next = { ...preferences, pushEnabled: true, permission };
+      savePreferences(next);
+      setStatusMessage(permissionLabel(permission, isFilePreview, true));
       return;
     }
 
@@ -92,7 +97,7 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
       const next = { ...preferences, pushEnabled: true, permission: nextPermission };
       savePreferences(next);
       backend.track('notifications_enabled', { permission: nextPermission });
-      setStatusMessage('Notifications are on for this device. New messages can show an alert, sound, or vibration when supported.');
+      setStatusMessage('Device alerts are on. New messages can show a banner, sound, or vibration when supported.');
 
       try {
         new Notification('StickerSwap notifications are on', {
@@ -104,10 +109,10 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
       return;
     }
 
-    const next = { ...preferences, pushEnabled: false, permission: nextPermission };
+    const next = { ...preferences, pushEnabled: true, permission: nextPermission };
     savePreferences(next);
-    backend.track('notifications_blocked', { permission: nextPermission });
-    setStatusMessage(permissionLabel(nextPermission, isFilePreview));
+    backend.track('notifications_sound_only', { permission: nextPermission });
+    setStatusMessage(permissionLabel(nextPermission, isFilePreview, true));
   };
 
   return (
@@ -132,11 +137,11 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
               <div className="flex items-center gap-3 min-w-0">
                 <Bell className="w-5 h-5 text-primary flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-foreground">Push Notifications</h3>
-                  <p className="text-xs text-muted-foreground">{permissionLabel(permission, isFilePreview)}</p>
+                  <h3 className="font-semibold text-foreground">Device Alerts</h3>
+                  <p className="text-xs text-muted-foreground">{permissionLabel(permission, isFilePreview, alertsEnabled)}</p>
                 </div>
               </div>
-              <Toggle enabled={pushEnabled} disabled={permission === 'unsupported' || permission === 'denied'} onChange={handlePushToggle} />
+              <Toggle enabled={alertsEnabled} disabled={false} onChange={handlePushToggle} />
             </div>
             {statusMessage && (
               <p className="mt-3 text-xs text-muted-foreground">{statusMessage}</p>

@@ -1,3 +1,34 @@
+type AudioWindow = typeof window & { webkitAudioContext?: typeof AudioContext };
+
+let sharedAudioContext: AudioContext | null = null;
+
+const getAudioContext = () => {
+  const AudioContextClass = window.AudioContext || (window as AudioWindow).webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    sharedAudioContext = new AudioContextClass();
+  }
+  return sharedAudioContext;
+};
+
+export const installNotificationFeedbackUnlock = () => {
+  const unlock = () => {
+    try {
+      void getAudioContext()?.resume();
+    } catch {
+      // Sound unlock is best effort and varies by browser.
+    }
+  };
+
+  window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+  window.addEventListener('touchstart', unlock, { once: true, passive: true });
+
+  return () => {
+    window.removeEventListener('pointerdown', unlock);
+    window.removeEventListener('touchstart', unlock);
+  };
+};
+
 export const playNotificationFeedback = () => {
   try {
     navigator.vibrate?.([80, 40, 80]);
@@ -6,10 +37,9 @@ export const playNotificationFeedback = () => {
   }
 
   try {
-    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-
-    const audioContext = new AudioContextClass();
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
+    void audioContext.resume().catch(() => {});
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
 
@@ -23,9 +53,6 @@ export const playNotificationFeedback = () => {
     gain.connect(audioContext.destination);
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.2);
-    window.setTimeout(() => {
-      void audioContext.close().catch(() => {});
-    }, 260);
   } catch {
     // Mobile browsers may block sound until the user has interacted with the page.
   }

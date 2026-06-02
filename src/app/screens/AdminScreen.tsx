@@ -282,7 +282,17 @@ function Dashboard({ users }: { users: AdminUserSummary[] }) {
   );
 }
 
-function UsersTab({ users, setUsers }: { users: AdminUserSummary[]; setUsers: React.Dispatch<React.SetStateAction<AdminUserSummary[]>> }) {
+function UsersTab({
+  users,
+  setUsers,
+  onDeleteUser,
+  deletingUserId,
+}: {
+  users: AdminUserSummary[];
+  setUsers: React.Dispatch<React.SetStateAction<AdminUserSummary[]>>;
+  onDeleteUser: (id: string) => void;
+  deletingUserId: string | null;
+}) {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -298,13 +308,6 @@ function UsersTab({ users, setUsers }: { users: AdminUserSummary[]; setUsers: Re
       backend.updateAccountStatus(u.email, status);
       return { ...u, status };
     }));
-
-  const deleteUser = (id: string) =>
-    setUsers(prev => {
-      const user = prev.find(u => u.id === id);
-      if (user) backend.deleteAccount(user.email);
-      return prev.filter(u => u.id !== id);
-    });
 
   return (
     <div className="space-y-4">
@@ -389,10 +392,12 @@ function UsersTab({ users, setUsers }: { users: AdminUserSummary[]; setUsers: Re
                     </button>
                   )}
                   <button
-                    onClick={() => deleteUser(u.id)}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg border border-destructive/40 text-destructive active:scale-95 transition-all"
+                    onClick={() => onDeleteUser(u.id)}
+                    disabled={deletingUserId === u.id}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg border border-destructive/40 text-destructive active:scale-95 transition-all disabled:opacity-50"
+                    aria-label={deletingUserId === u.id ? 'Removing user' : 'Remove user'}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    {deletingUserId === u.id ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
@@ -635,6 +640,7 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
   const [isLoadingLiveData, setIsLoadingLiveData] = useState(true);
   const [adminDataError, setAdminDataError] = useState('');
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const refreshAdminReport = () => {
     setIsLoadingLiveData(true);
@@ -689,6 +695,19 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
       .finally(() => setDeletingMessageId(null));
   };
 
+  const deleteAdminUser = (id: string) => {
+    if (deletingUserId) return;
+    const user = users.find(candidate => candidate.id === id);
+    setDeletingUserId(id);
+    backend.adminDeleteUser(id, user?.email)
+      .then(() => refreshAdminReport())
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : '';
+        setAdminDataError(`Could not remove that user from the live app. ${message || 'Try again.'}`);
+      })
+      .finally(() => setDeletingUserId(null));
+  };
+
   const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
     { key: 'users',     label: 'Users',     icon: <Users className="w-4 h-4" /> },
@@ -736,7 +755,14 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
         )}
 
         {activeTab === 'dashboard' && <Dashboard users={users} />}
-        {activeTab === 'users'     && <UsersTab users={users} setUsers={setUsers} />}
+        {activeTab === 'users'     && (
+          <UsersTab
+            users={users}
+            setUsers={setUsers}
+            onDeleteUser={deleteAdminUser}
+            deletingUserId={deletingUserId}
+          />
+        )}
         {activeTab === 'issues'    && <IssuesTab issues={issues} setIssues={setIssues} />}
         {activeTab === 'chats'     && (
           <ChatsModTab

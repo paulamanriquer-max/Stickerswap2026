@@ -1026,7 +1026,7 @@ export const backend = {
       });
 
       return {
-        users: (report.users || []).map(user => ({
+        users: (report.users || []).filter(user => user.status !== 'banned').map(user => ({
           ...user,
           status: user.status || 'active',
           stickers: Number(user.stickers || 0),
@@ -1063,6 +1063,21 @@ export const backend = {
 
     const nextMessages = backend.loadPublicMessages().filter(message => message.id !== messageId);
     backend.savePublicMessages(nextMessages);
+    return true;
+  },
+
+  async adminDeleteUser(userId: string, email?: string): Promise<boolean> {
+    if (usingSupabase()) {
+      await supabaseRpc<boolean>('admin_delete_user', {
+        p_admin_email: ADMIN_EMAIL,
+        p_admin_password: ADMIN_PASSWORD,
+        p_user_id: userId,
+      });
+      localStorage.removeItem(SUPABASE_COMPARISONS_KEY);
+      return true;
+    }
+
+    if (email) backend.deleteAccount(email);
     return true;
   },
 

@@ -61,6 +61,7 @@ begin
         group by participant_id
       ) m on m.participant_id = au.id
       where lower(coalesce(au.email, '')) <> 'paulaadmin@stickerswap.com'
+        and coalesce(p.status, 'active') <> 'banned'
     ), '[]'::jsonb),
     'publicMessages',
     coalesce((

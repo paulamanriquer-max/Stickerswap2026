@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { AlbumSelectionScreen } from './screens/AlbumSelectionScreen';
 import { MyAlbumScreen } from './screens/MyAlbumScreen';
@@ -249,11 +249,11 @@ export default function App() {
 
   const totalUnreadChats = publicUnreadCount + Object.values(privateUnreadByUser).reduce((sum, count) => sum + count, 0);
 
-  const markPublicChatRead = () => {
+  const markPublicChatRead = useCallback(() => {
     const nextSeenAt = Math.max(Date.now(), latestMessageTime(publicMessages));
     setLastSeenPublicChatAt(nextSeenAt);
     localStorage.setItem(LAST_SEEN_PUBLIC_CHAT_KEY, String(nextSeenAt));
-  };
+  }, [publicMessages]);
 
   const markPrivateChatRead = (username: string, userId?: string) => {
     const key = userId || conversations.find(conversation => conversation.username === username)?.userId || username;
@@ -686,6 +686,7 @@ export default function App() {
             privateUnreadByUser={privateUnreadByUser}
             city={MVP_CITY}
             canUsePrivateChat={Boolean(user?.email)}
+            onPublicVisible={markPublicChatRead}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onChatClick={(username, userId) => {
               const publicRoom = isPublicRoom(username);

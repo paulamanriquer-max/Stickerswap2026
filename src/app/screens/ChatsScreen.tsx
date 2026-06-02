@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MessageCircle, Users } from 'lucide-react';
 import { SegmentedControl } from '../components/SegmentedControl';
 
@@ -26,6 +26,7 @@ interface ChatsScreenProps {
   privateUnreadByUser?: Record<string, number>;
   onChatClick: (username: string, userId?: string) => void;
   onUpgradeRequest: () => void;
+  onPublicVisible?: () => void;
   canUsePrivateChat: boolean;
   city: string;
 }
@@ -40,6 +41,7 @@ export function ChatsScreen({
   privateUnreadByUser = {},
   onChatClick,
   onUpgradeRequest,
+  onPublicVisible,
   canUsePrivateChat,
   city,
 }: ChatsScreenProps) {
@@ -70,24 +72,29 @@ export function ChatsScreen({
 
   const latestPublicMessage = publicMessages[publicMessages.length - 1];
 
+  useEffect(() => {
+    if (view !== 'public') return;
+    onPublicVisible?.();
+  }, [view, latestPublicMessage?.id, publicMessages.length, onPublicVisible]);
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="px-4 pt-6 pb-4">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground mb-1">Chats</h1>
-          <p className="text-sm text-muted-foreground mb-4">Public rooms and private conversations</p>
+          <p className="text-sm text-muted-foreground mb-4">Community chat and private conversations</p>
 
           <SegmentedControl
             options={[
-              { value: 'public', label: 'Public Rooms' },
-              { value: 'private', label: 'Private Chats' },
+              { value: 'public', label: 'Public' },
+              { value: 'private', label: 'Private' },
             ]}
             value={view}
             onChange={(value) => setView(value as ChatView)}
           />
         </div>
 
-        {/* Public Rooms Section */}
+        {/* Public Chat Section */}
         {view === 'public' && (
           <div className="space-y-2">
             <button

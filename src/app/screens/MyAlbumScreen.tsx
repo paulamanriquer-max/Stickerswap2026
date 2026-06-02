@@ -1,11 +1,12 @@
 import { TeamCard } from '../components/TeamCard';
 import { SearchBar } from '../components/SearchBar';
 import { StickerCard } from '../components/StickerCard';
-import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle, Check, Loader2 } from 'lucide-react';
+import { Plus, Award, ArrowLeft, Copy, CheckCircle, AlertCircle, Check, Loader2, Share2 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { worldCupTeams } from '../data/teams';
 import { getPlayerByCode, getPlayersByTeam } from '../data/players';
 import { StickerStatus } from '../lib/stickerState';
+import { buildStickerShareText, shareStickerText } from '../lib/shareStickers';
 
 interface Sticker {
   code: string;
@@ -161,6 +162,7 @@ function SubpageView({
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<BulkAction | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [shareFeedback, setShareFeedback] = useState('');
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
@@ -239,6 +241,20 @@ function SubpageView({
     setSelectedCodes(new Set(filtered.map(sticker => sticker.code)));
   };
 
+  const shareCurrentList = async () => {
+    const isDupes = subpage === 'duplicates';
+    const label = isDupes ? 'My dupes' : 'My missing stickers';
+    const text = buildStickerShareText(label, filtered, isDupes);
+    try {
+      const result = await shareStickerText(`StickerSwap KC - ${label}`, text);
+      setShareFeedback(result === 'copied' ? 'Copied to clipboard' : 'Shared');
+      window.setTimeout(() => setShareFeedback(''), 2500);
+    } catch {
+      setShareFeedback('Could not share. Try again.');
+      window.setTimeout(() => setShareFeedback(''), 2500);
+    }
+  };
+
   const confirmBulkAction = () => {
     if (!pendingAction || selectedCodes.size === 0) return;
     onBulkUpdate(Array.from(selectedCodes), pendingAction);
@@ -280,12 +296,21 @@ function SubpageView({
             <p className="text-xs text-muted-foreground">{stickers.length} sticker{stickers.length !== 1 ? 's' : ''}</p>
           </div>
           {bulkEnabled && !isSelecting && stickers.length > 0 && (
-            <button
-              onClick={startSelecting}
-              className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
-            >
-              Select
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={shareCurrentList}
+                className="flex items-center gap-1 px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </button>
+              <button
+                onClick={startSelecting}
+                className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+              >
+                Select
+              </button>
+            </div>
           )}
           {bulkEnabled && isSelecting && (
             <button
@@ -310,6 +335,12 @@ function SubpageView({
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {shareFeedback && (
+          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2">
+            <p className="text-sm font-semibold text-foreground">{shareFeedback}</p>
           </div>
         )}
 

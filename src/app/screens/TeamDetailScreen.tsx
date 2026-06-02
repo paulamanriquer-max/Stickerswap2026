@@ -1,12 +1,13 @@
 import { StickerCard } from '../components/StickerCard';
 import { SearchBar } from '../components/SearchBar';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { ChevronLeft, Check } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronLeft, Check, Share2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { getTeamByCode } from '../data/teams';
 import { getPlayersByTeam } from '../data/players';
 import { getTeamColors } from '../data/teamColors';
 import { StickerStatus } from '../lib/stickerState';
+import { buildStickerShareText, shareStickerText } from '../lib/shareStickers';
 
 interface Sticker {
   code: string;
@@ -24,12 +25,66 @@ interface TeamDetailScreenProps {
   onDeleteSticker: (code: string) => void;
 }
 
+function SelectableTeamStickerCard({
+  sticker,
+  selected,
+  onToggle,
+}: {
+  sticker: Sticker & { playerName: string };
+  selected: boolean;
+  onToggle: (code: string) => void;
+}) {
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  return (
+    <button
+      type="button"
+      onPointerDown={(event) => {
+        pointerStartRef.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerUp={(event) => {
+        event.preventDefault();
+        const start = pointerStartRef.current;
+        pointerStartRef.current = null;
+        if (start) {
+          const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+          if (moved > 8) return;
+        }
+        onToggle(sticker.code);
+      }}
+      className={`w-full touch-manipulation select-none flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-none ${
+        selected
+          ? 'border-primary bg-primary/10'
+          : 'border-border/50'
+      }`}
+    >
+      <span className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 ${
+        selected
+          ? 'bg-primary border-primary text-primary-foreground'
+          : 'border-border bg-background/60'
+      }`}>
+        {selected && <Check className="w-4 h-4" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-bold text-foreground">{sticker.code}</span>
+        <span className="block text-xs text-muted-foreground truncate">{sticker.playerName}</span>
+      </span>
+      {sticker.duplicateCount > 0 && (
+        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+          x{sticker.duplicateCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, onUpdateSticker, onDeleteSticker }: TeamDetailScreenProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<StickerStatus | null>(null);
+  const [shareFeedback, setShareFeedback] = useState('');
 
   const team = getTeamByCode(teamCode);
   const teamPlayers = getPlayersByTeam(teamCode);
@@ -98,6 +153,20 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
 
   const selectAll = () => {
     setSelectedCodes(new Set(filteredStickers.map(sticker => sticker.code)));
+  };
+
+  const shareCurrentList = async () => {
+    const isDupes = filter === 'duplicate';
+    const label = `${team.name} ${isDupes ? 'dupes' : 'missing'}`;
+    const text = buildStickerShareText(label, filteredStickers, isDupes);
+    try {
+      const result = await shareStickerText(`StickerSwap KC - ${label}`, text);
+      setShareFeedback(result === 'copied' ? 'Copied to clipboard' : 'Shared');
+      window.setTimeout(() => setShareFeedback(''), 2500);
+    } catch {
+      setShareFeedback('Could not share. Try again.');
+      window.setTimeout(() => setShareFeedback(''), 2500);
+    }
   };
 
   const confirmBulkAction = () => {
@@ -210,12 +279,21 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
               {filter === 'duplicate' && `Dupes (${filteredStickers.length})`}
             </h3>
             {!isSelecting && filteredStickers.length > 0 && (filter === 'missing' || filter === 'duplicate') && (
-              <button
-                onClick={() => setIsSelecting(true)}
-                className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
-              >
-                Select
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={shareCurrentList}
+                  className="flex items-center gap-1 px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </button>
+                <button
+                  onClick={() => setIsSelecting(true)}
+                  className="px-1 py-2 text-primary text-base font-bold active:scale-95 transition-all"
+                >
+                  Select
+                </button>
+              </div>
             )}
             {isSelecting && (
               <button
@@ -239,43 +317,21 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
           </div>
         )}
 
+        {shareFeedback && (
+          <div className="mb-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2">
+            <p className="text-sm font-semibold text-foreground">{shareFeedback}</p>
+          </div>
+        )}
+
         <div className="space-y-2 pb-4">
           {filteredStickers.map((sticker) => (
             isSelecting ? (
-              <button
+              <SelectableTeamStickerCard
                 key={sticker.code}
-                onPointerDown={(event) => {
-                  if (event.pointerType === 'touch') {
-                    event.preventDefault();
-                    toggleCode(sticker.code);
-                  }
-                }}
-                onClick={(event) => {
-                  if ((event.nativeEvent as PointerEvent).pointerType !== 'touch') toggleCode(sticker.code);
-                }}
-                className={`w-full touch-manipulation flex items-center gap-3 px-3 py-3 bg-card/40 border rounded-xl text-left transition-colors duration-75 ${
-                  selectedCodes.has(sticker.code)
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border/50'
-                }`}
-              >
-                <span className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 ${
-                  selectedCodes.has(sticker.code)
-                    ? 'bg-primary border-primary text-primary-foreground'
-                    : 'border-border bg-background/60'
-                }`}>
-                  {selectedCodes.has(sticker.code) && <Check className="w-4 h-4" />}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-bold text-foreground">{sticker.code}</span>
-                  <span className="block text-xs text-muted-foreground truncate">{sticker.playerName}</span>
-                </span>
-                {sticker.duplicateCount > 0 && (
-                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
-                    x{sticker.duplicateCount}
-                  </span>
-                )}
-              </button>
+                sticker={sticker}
+                selected={selectedCodes.has(sticker.code)}
+                onToggle={toggleCode}
+              />
             ) : (
               <StickerCard
                 key={sticker.code}

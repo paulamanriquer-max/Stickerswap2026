@@ -72,12 +72,12 @@ function LogoCup() {
 export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
   return (
     <div className="h-full min-h-0 overflow-hidden flex flex-col" style={{ backgroundColor: "#090f1e" }}>
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-start px-5 pt-[max(28px,env(safe-area-inset-top))] pb-2">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-start px-5 pt-[max(10px,env(safe-area-inset-top))] pb-2">
         <div
           className="relative rounded-lg overflow-hidden shrink-0"
           style={{
-            width: "min(238px, 68vw, 28dvh)",
-            height: "min(238px, 68vw, 28dvh)",
+            width: "min(280px, 70vw, 38dvh)",
+            height: "min(280px, 70vw, 38dvh)",
             backgroundColor: "#090f1f",
           }}
         >
@@ -89,14 +89,14 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
 
         {/* Tagline */}
         <p
-          className="text-center text-white mt-5 tracking-[2.56px] text-[15px] leading-[22px] max-w-[245px]"
+          className="text-center text-white mt-7 tracking-[2.56px] text-[16px] leading-[24px] max-w-[245px]"
           style={{ fontFamily: "var(--font-body)", fontWeight: 500 }}
         >
           CONNECTING 2026 COLLECTORS TO TRADE PANINI STICKERS
         </p>
 
         {/* Kansas City Badge */}
-        <div className="flex items-center gap-1 px-2 pr-3 py-1 rounded-full mt-3 mb-3 shrink-0" style={{ backgroundColor: "#fff838" }}>
+        <div className="flex items-center gap-1 px-2 pr-3 py-1 rounded-full mt-4 mb-3 shrink-0" style={{ backgroundColor: "#fff838" }}>
           <MapPin className="w-4 h-4" style={{ color: "#1E1E1E" }} />
           <span className="text-[16px] font-medium" style={{ color: "#090f1e", fontFamily: "var(--font-body)" }}>
             Kansas City
@@ -104,7 +104,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
         </div>
       </div>
 
-      <div className="shrink-0 w-full px-5 pt-3 pb-[calc(24px+env(safe-area-inset-bottom))]" style={{ backgroundColor: "#090f1e" }}>
+      <div className="shrink-0 w-full px-5 pt-3 pb-[calc(96px+env(safe-area-inset-bottom))]" style={{ backgroundColor: "#090f1e" }}>
         <div className="flex w-full flex-col gap-3">
           <Button
             onClick={() => onNavigate?.('sign-up')}

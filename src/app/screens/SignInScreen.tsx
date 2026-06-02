@@ -71,7 +71,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </button>
       </div>
 
-      <form onSubmit={handleLogIn} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pt-8 pb-8 scroll-pb-32">
+      <form onSubmit={handleLogIn} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pt-8 pb-44 scroll-pb-44">
         <div className="mb-7">
           <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Log in</h1>
           <p className="text-sm text-muted-foreground">Access your saved collection</p>
@@ -148,7 +148,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </div>
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-[calc(16px+env(safe-area-inset-bottom))] bg-background">
+      <div className="fixed left-1/2 bottom-[calc(12px+env(safe-area-inset-bottom))] z-50 w-full max-w-md -translate-x-1/2 px-6 bg-background/95 pt-3 pb-1 backdrop-blur-sm">
         <Button
           onClick={handleLogIn as any}
           fullWidth

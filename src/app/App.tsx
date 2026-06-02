@@ -133,8 +133,13 @@ export default function App() {
 
   useEffect(() => {
     const updateAppHeight = () => {
-      const height = window.visualViewport?.height || window.innerHeight;
+      const visualViewport = window.visualViewport;
+      const height = visualViewport?.height || window.innerHeight;
+      const keyboardInset = visualViewport
+        ? Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop)
+        : 0;
       document.documentElement.style.setProperty('--stickerswap-app-height', `${height}px`);
+      document.documentElement.style.setProperty('--stickerswap-keyboard-inset', `${keyboardInset}px`);
     };
 
     updateAppHeight();

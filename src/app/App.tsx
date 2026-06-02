@@ -23,6 +23,7 @@ import { AdminScreen } from './screens/AdminScreen';
 import { AddEmailScreen } from './screens/AddEmailScreen';
 import { UpgradePrompt } from './components/UpgradePrompt';
 import { AppUser, backend, shouldPromptForUpgrade, StickerState } from './lib/backend';
+import { showDeviceNotification } from './lib/notificationFeedback';
 import { applyStickerStatus, createDefaultStickerStates, normalizeStickerStates, setStickerStatus, StickerStatus } from './lib/stickerState';
 
 type Screen =
@@ -287,11 +288,7 @@ export default function App() {
       if (notifiedMessageIdsRef.current.has(message.id)) return;
       notifiedMessageIdsRef.current.add(message.id);
       if (!canNotify) return;
-      try {
-        new Notification(message.title, { body: message.body });
-      } catch {
-        // Browser permission can exist even when the current device blocks the notification UI.
-      }
+      showDeviceNotification(message.title, message.body);
     });
   }, [publicMessages, conversations]);
 

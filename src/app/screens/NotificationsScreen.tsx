@@ -15,7 +15,7 @@ const getDevicePermission = (): NotificationPermissionState => {
 };
 
 const permissionLabel = (permission: NotificationPermissionState, isFilePreview: boolean) => {
-  if (permission === 'granted') return 'Notifications are enabled while the app is open or in the background';
+  if (permission === 'granted') return 'Alerts, sound, and vibration are enabled on this device';
   if (permission === 'denied') return 'Notifications are blocked in browser settings';
   if (permission === 'unsupported') return 'Notifications are not supported in this preview';
   if (isFilePreview) return 'Device permission works in the hosted test build';
@@ -92,11 +92,11 @@ export function NotificationsScreen({ onBack }: NotificationsScreenProps) {
       const next = { ...preferences, pushEnabled: true, permission: nextPermission };
       savePreferences(next);
       backend.track('notifications_enabled', { permission: nextPermission });
-      setStatusMessage('Notifications are on for this device.');
+      setStatusMessage('Notifications are on for this device. New messages can show an alert, sound, or vibration when supported.');
 
       try {
         new Notification('StickerSwap notifications are on', {
-          body: 'We will use these for matches, messages, and trade requests.',
+          body: 'New messages can alert, vibrate, or play a soft sound when supported.',
         });
       } catch {
         // Some preview environments allow permission but block creating the test notification.

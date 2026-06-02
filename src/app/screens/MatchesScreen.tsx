@@ -5,6 +5,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { backend, CollectorComparison, StickerState } from '../lib/backend';
+import { showDeviceNotification } from '../lib/notificationFeedback';
 
 interface MatchesScreenProps {
   onCollectorClick: (collectorId: string) => void;
@@ -13,6 +14,54 @@ interface MatchesScreenProps {
 }
 
 type CollectorView = 'matches' | 'all';
+const NOTIFIED_MATCHES_KEY = 'stickerswap.notifiedMatchIds';
+
+const loadNotifiedMatchIds = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(NOTIFIED_MATCHES_KEY) || '[]') as string[]);
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const saveNotifiedMatchIds = (ids: Set<string>) => {
+  localStorage.setItem(NOTIFIED_MATCHES_KEY, JSON.stringify([...ids]));
+};
+
+const notifyNewMatches = (collectors: CollectorComparison[]) => {
+  const preferences = backend.loadNotificationPreferences();
+  if (!preferences.pushEnabled || !preferences.matches) return;
+
+  const notifiedIds = loadNotifiedMatchIds();
+  const currentMatchIds = new Set(
+    collectors
+      .filter(collector => collector.matches.length > 0)
+      .map(collector => `${collector.id}:${collector.matches.join(',')}`)
+  );
+
+  if (notifiedIds.size === 0) {
+    saveNotifiedMatchIds(currentMatchIds);
+    return;
+  }
+
+  const newMatches = collectors.filter(collector => {
+    if (collector.matches.length === 0) return false;
+    return !notifiedIds.has(`${collector.id}:${collector.matches.join(',')}`);
+  });
+
+  if (newMatches.length === 0) {
+    saveNotifiedMatchIds(currentMatchIds);
+    return;
+  }
+
+  const firstMatch = newMatches[0];
+  const extraCount = newMatches.length - 1;
+  showDeviceNotification(
+    'New StickerSwap match',
+    `${firstMatch.username} has ${firstMatch.matches.length} sticker${firstMatch.matches.length === 1 ? '' : 's'} you need${extraCount > 0 ? `, plus ${extraCount} more collector${extraCount === 1 ? '' : 's'}` : ''}.`
+  );
+  saveNotifiedMatchIds(currentMatchIds);
+};
 
 export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScreenProps) {
   const [search, setSearch] = useState('');
@@ -26,7 +75,9 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
       .catch(() => {})
       .then(() => backend.refreshCollectorComparisons())
       .then(nextCollectors => {
-        if (isMounted) setCollectors(nextCollectors);
+        if (!isMounted) return;
+        setCollectors(nextCollectors);
+        notifyNewMatches(nextCollectors);
       })
       .catch(() => {
         if (isMounted) setCollectors(backend.getCollectorComparisons(stickers));

@@ -46,7 +46,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
   };
 
   return (
-    <div className="h-dvh min-h-screen bg-background overflow-hidden flex flex-col">
+    <div className="h-full min-h-0 bg-background overflow-hidden flex flex-col">
       <div className="px-6 pt-6 shrink-0 flex items-center justify-between">
         <button
           onClick={() => onNavigate?.('welcome')}
@@ -139,7 +139,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </div>
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-[max(36px,env(safe-area-inset-bottom))] bg-background">
+      <div className="shrink-0 px-6 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))] bg-background">
         <Button
           onClick={handleLogIn as any}
           fullWidth

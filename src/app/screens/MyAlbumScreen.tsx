@@ -247,7 +247,7 @@ function SubpageView({
     const text = buildStickerShareText(label, filtered, isDupes);
     try {
       const result = await shareStickerText(`StickerSwap KC - ${label}`, text);
-      setShareFeedback(result === 'copied' ? 'Copied to clipboard' : 'Shared');
+      setShareFeedback(result === 'copied' ? 'List copied to clipboard' : 'Share sheet opened');
       window.setTimeout(() => setShareFeedback(''), 2500);
     } catch {
       setShareFeedback('Could not share. Try again.');

@@ -132,6 +132,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const updateAppHeight = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--stickerswap-app-height', `${height}px`);
+    };
+
+    updateAppHeight();
+    window.visualViewport?.addEventListener('resize', updateAppHeight);
+    window.visualViewport?.addEventListener('scroll', updateAppHeight);
+    window.addEventListener('resize', updateAppHeight);
+    window.addEventListener('orientationchange', updateAppHeight);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateAppHeight);
+      window.visualViewport?.removeEventListener('scroll', updateAppHeight);
+      window.removeEventListener('resize', updateAppHeight);
+      window.removeEventListener('orientationchange', updateAppHeight);
+    };
+  }, []);
+
+  useEffect(() => {
     currentScreenRef.current = currentScreen;
   }, [currentScreen]);
 
@@ -743,7 +763,7 @@ export default function App() {
   };
 
   return (
-    <div className={`w-full bg-background overscroll-none dark ${isFixedScreen ? 'h-[100svh] overflow-hidden' : 'h-dvh overflow-auto'}`}>
+    <div className={`w-full bg-background overscroll-none dark ${isFixedScreen ? 'h-[var(--stickerswap-app-height,100svh)] overflow-hidden' : 'h-dvh overflow-auto'}`}>
       <div className={`max-w-md mx-auto relative bg-background ${isFixedScreen ? 'h-full overflow-hidden' : 'min-h-screen'}`}>
         {renderScreen()}
 

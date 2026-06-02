@@ -72,7 +72,7 @@ function LogoCup() {
 export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
   return (
     <div className="h-full min-h-0 overflow-hidden flex flex-col" style={{ backgroundColor: "#090f1e" }}>
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-start px-5 pt-[max(10px,env(safe-area-inset-top))] pb-2">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-start px-5 pt-[max(8px,env(safe-area-inset-top))] pb-2">
         <div
           className="relative rounded-lg overflow-hidden shrink-0"
           style={{
@@ -104,7 +104,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
         </div>
       </div>
 
-      <div className="shrink-0 w-full px-5 pt-3 pb-[calc(96px+env(safe-area-inset-bottom))]" style={{ backgroundColor: "#090f1e" }}>
+      <div className="shrink-0 w-full px-5 pt-3 pb-[calc(24px+env(safe-area-inset-bottom))]" style={{ backgroundColor: "#090f1e" }}>
         <div className="flex w-full flex-col gap-3">
           <Button
             onClick={() => onNavigate?.('sign-up')}

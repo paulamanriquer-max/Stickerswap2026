@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MessageCircle, Users } from 'lucide-react';
+import { SegmentedControl } from '../components/SegmentedControl';
 
 interface Message {
   id: string;
@@ -76,29 +77,14 @@ export function ChatsScreen({
           <h1 className="text-2xl font-bold text-foreground mb-1">Chats</h1>
           <p className="text-sm text-muted-foreground mb-4">Public rooms and private conversations</p>
 
-          {/* Segment Filter */}
-          <div className="flex gap-1 p-1 bg-card/30 rounded-xl border border-border/50">
-            <button
-              onClick={() => setView('public')}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                view === 'public'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Public Rooms
-            </button>
-            <button
-              onClick={() => setView('private')}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                view === 'private'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Private Chats
-            </button>
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'public', label: 'Public Rooms' },
+              { value: 'private', label: 'Private Chats' },
+            ]}
+            value={view}
+            onChange={(value) => setView(value as ChatView)}
+          />
         </div>
 
         {/* Public Rooms Section */}

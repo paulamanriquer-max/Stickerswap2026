@@ -71,10 +71,16 @@ function LogoCup() {
 
 export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#090f1e" }}>
-      {/* Scrollable content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-12 overflow-y-auto pb-32">
-        <div className="relative rounded-lg overflow-hidden" style={{ width: 280, height: 280, backgroundColor: "#090f1f" }}>
+    <div className="h-dvh min-h-screen overflow-hidden flex flex-col" style={{ backgroundColor: "#090f1e" }}>
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 pt-8 pb-[220px]">
+        <div
+          className="relative rounded-lg overflow-hidden shrink-0"
+          style={{
+            width: "min(280px, 70vw, 38vh)",
+            height: "min(280px, 70vw, 38vh)",
+            backgroundColor: "#090f1f",
+          }}
+        >
           <LogoText />
           <LogoNumeral />
           <LogoBall />
@@ -99,7 +105,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
       </div>
 
       {/* Sticky Buttons */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 px-5 py-6 sm:rounded-t-2xl" style={{ backgroundColor: "#090f1e" }}>
+      <div className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] sm:rounded-t-2xl" style={{ backgroundColor: "#090f1e" }}>
         <div className="flex w-full flex-col gap-3">
           <Button
             onClick={() => onNavigate?.('sign-up')}

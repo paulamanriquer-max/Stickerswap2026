@@ -638,9 +638,10 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
         setUsers(report.users);
         setChatMessages(report.publicMessages);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!isMounted) return;
-        setAdminDataError('Live admin data is not connected yet. Run the Supabase admin report setup before launch.');
+        const message = error instanceof Error ? error.message : '';
+        setAdminDataError(`Live admin data is not connected yet. ${message || 'Run the Supabase admin report setup before launch.'}`);
       })
       .finally(() => {
         if (isMounted) setIsLoadingLiveData(false);

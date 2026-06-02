@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Users, AlertTriangle, BarChart2, Search, LogOut,
   ShieldCheck, CheckCircle, XCircle, Clock, ChevronDown,
   Trash2, Ban, UserCheck, ArrowLeft, TrendingUp, MessageSquare,
 } from 'lucide-react';
-import { AdminUserSummary, backend } from '../lib/backend';
+import { AdminChatMessage, AdminUserSummary, backend } from '../lib/backend';
 
 type UserStatus = AdminUserSummary['status'];
 
@@ -23,16 +23,7 @@ interface Issue {
 
 const initialIssues: Issue[] = [];
 
-interface ChatMessage {
-  id: string;
-  user: string;
-  room: string;
-  city: string;
-  message: string;
-  timestamp: string;
-  flagged: boolean;
-}
-
+type ChatMessage = AdminChatMessage;
 const initialChatMessages: ChatMessage[] = [];
 
 const loadAdminChatMessages = (): ChatMessage[] =>
@@ -633,6 +624,32 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
     const messages = loadAdminChatMessages();
     return messages.length > 0 ? messages : initialChatMessages;
   });
+  const [isLoadingLiveData, setIsLoadingLiveData] = useState(true);
+  const [adminDataError, setAdminDataError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingLiveData(true);
+    setAdminDataError('');
+
+    backend.getAdminReport()
+      .then(report => {
+        if (!isMounted) return;
+        setUsers(report.users);
+        setChatMessages(report.publicMessages);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setAdminDataError('Live admin data is not connected yet. Run the Supabase admin report setup before launch.');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingLiveData(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
@@ -666,6 +683,20 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
 
       {/* Page content */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+        {isLoadingLiveData && (
+          <div className="mb-4 rounded-xl border border-primary/30 bg-primary/10 p-3">
+            <p className="text-sm font-semibold text-foreground">Loading live admin data...</p>
+            <p className="mt-1 text-xs text-muted-foreground">Pulling users, sticker counts, and public chat from Supabase.</p>
+          </div>
+        )}
+
+        {adminDataError && (
+          <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3">
+            <p className="text-sm font-semibold text-destructive">Admin data needs setup</p>
+            <p className="mt-1 text-xs text-muted-foreground">{adminDataError}</p>
+          </div>
+        )}
+
         {activeTab === 'dashboard' && <Dashboard users={users} />}
         {activeTab === 'users'     && <UsersTab users={users} setUsers={setUsers} />}
         {activeTab === 'issues'    && <IssuesTab issues={issues} setIssues={setIssues} />}

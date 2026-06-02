@@ -66,6 +66,21 @@ export interface AdminUserSummary {
   location: string;
 }
 
+export interface AdminChatMessage {
+  id: string;
+  user: string;
+  room: string;
+  city: string;
+  message: string;
+  timestamp: string;
+  flagged: boolean;
+}
+
+export interface AdminReport {
+  users: AdminUserSummary[];
+  publicMessages: AdminChatMessage[];
+}
+
 export interface CollectorComparison {
   id: string;
   username: string;
@@ -203,7 +218,25 @@ interface SupabasePrivateMessageRow {
   created_at: string;
 }
 
+interface SupabaseAdminReport {
+  users?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    joinedAt: string;
+    lastActive: string;
+    stickers: number;
+    trades: number;
+    status: AccountStatus;
+    location: string;
+  }>;
+  publicMessages?: AdminChatMessage[];
+}
+
 const usingSupabase = () => isSupabaseConfigured();
+
+const ADMIN_EMAIL = 'paulaadmin@stickerswap.com';
+const ADMIN_PASSWORD = 'M0nasMundial2026!';
 
 const readSupabaseSession = () => readJson<SupabaseSession | null>(SUPABASE_SESSION_KEY, null);
 
@@ -981,6 +1014,39 @@ export const backend = {
         location: 'Kansas City',
       };
     }).sort((a, b) => b.joinedAt.localeCompare(a.joinedAt));
+  },
+
+  async getAdminReport(): Promise<AdminReport> {
+    if (usingSupabase()) {
+      const report = await supabaseRpc<SupabaseAdminReport>('admin_report', {
+        p_admin_email: ADMIN_EMAIL,
+        p_admin_password: ADMIN_PASSWORD,
+      });
+
+      return {
+        users: (report.users || []).map(user => ({
+          ...user,
+          status: user.status || 'active',
+          stickers: Number(user.stickers || 0),
+          trades: Number(user.trades || 0),
+          location: user.location || 'Kansas City',
+        })),
+        publicMessages: report.publicMessages || [],
+      };
+    }
+
+    return {
+      users: backend.getAdminUsers(),
+      publicMessages: backend.loadPublicMessages().map(message => ({
+        id: message.id,
+        user: message.sender,
+        room: 'Public Chat',
+        city: 'Kansas City',
+        message: message.text,
+        timestamp: new Date(message.timestamp).toLocaleString(),
+        flagged: false,
+      })),
+    };
   },
 
   getCollectorComparisons(currentStickers: StickerState[]): CollectorComparison[] {

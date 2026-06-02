@@ -17,6 +17,13 @@ const recoveryQuestions = [
   'What is the name of your favorite teacher?',
 ];
 
+const keepFieldVisible = (event: React.FocusEvent<HTMLElement>) => {
+  const field = event.currentTarget;
+  window.setTimeout(() => {
+    field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, 120);
+};
+
 export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: SignUpScreenProps) {
   const [step, setStep] = useState<'account' | 'recovery'>('account');
   const [name, setName] = useState('');
@@ -93,7 +100,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
   };
 
   return (
-    <div className="h-full min-h-0 bg-background overflow-hidden flex flex-col">
+    <div className="h-full min-h-0 bg-background overflow-y-auto overscroll-contain flex flex-col">
       <div className="px-6 pt-6 shrink-0">
         <button
           onClick={() => step === 'recovery' ? setStep('account') : onNavigate?.('welcome')}
@@ -104,7 +111,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
         </button>
       </div>
 
-      <form onSubmit={step === 'account' ? handleContinue : handleCreateAccount} className="flex-1 min-h-0 flex flex-col px-6 pt-8 pb-4">
+      <form onSubmit={step === 'account' ? handleContinue : handleCreateAccount} className="flex-1 min-h-fit flex flex-col px-6 pt-8 pb-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Create account</h1>
           <p className="text-sm text-muted-foreground">
@@ -132,6 +139,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
                   if (nameError) setNameError(false);
                 }}
                 onBlur={() => setNameError(!name.trim())}
+                onFocus={keepFieldVisible}
                 placeholder="Your name"
                 className={`w-full h-12 pl-8 pr-4 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
                   nameError ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : 'border-border/50 focus:ring-primary/50 focus:border-primary'
@@ -155,6 +163,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
                   if (accountExistsError) setAccountExistsError(false);
                 }}
                 onBlur={() => setEmailError(!isValidEmail(email.trim()))}
+                onFocus={keepFieldVisible}
                 placeholder="you@example.com"
                 className={`w-full h-12 pl-8 pr-4 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
                   emailError ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : 'border-border/50 focus:ring-primary/50 focus:border-primary'
@@ -182,6 +191,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
                   if (passwordError) setPasswordError(false);
                 }}
                 onBlur={() => setPasswordError(!isValidPassword(password))}
+                onFocus={keepFieldVisible}
                 placeholder="At least 8 characters"
                 className={`w-full h-12 pl-8 pr-11 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
                   passwordError ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : 'border-border/50 focus:ring-primary/50 focus:border-primary'
@@ -219,6 +229,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
               <select
                 value={recoveryQuestion}
                 onChange={(event) => setRecoveryQuestion(event.target.value)}
+                onFocus={keepFieldVisible}
                 className="w-full h-12 px-4 bg-card/30 backdrop-blur-xl rounded-xl border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground"
               >
                 {recoveryQuestions.map(question => (
@@ -237,6 +248,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
                   if (recoveryAnswerError) setRecoveryAnswerError(false);
                 }}
                 onBlur={() => setRecoveryAnswerError(recoveryAnswer.trim().length < 2)}
+                onFocus={keepFieldVisible}
                 placeholder="Your answer"
                 className={`w-full h-12 px-4 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
                   recoveryAnswerError ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : 'border-border/50 focus:ring-primary/50 focus:border-primary'
@@ -256,7 +268,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
         )}
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))] bg-background">
+      <div className="sticky bottom-0 shrink-0 px-6 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))] bg-background">
         <Button
           onClick={(step === 'account' ? handleContinue : handleCreateAccount) as any}
           fullWidth

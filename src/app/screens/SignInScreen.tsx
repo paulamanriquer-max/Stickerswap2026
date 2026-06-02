@@ -9,6 +9,13 @@ interface SignInScreenProps {
 
 const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
 
+const keepFieldVisible = (event: React.FocusEvent<HTMLElement>) => {
+  const field = event.currentTarget;
+  window.setTimeout(() => {
+    field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, 120);
+};
+
 export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +53,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
   };
 
   return (
-    <div className="h-full min-h-0 bg-background overflow-hidden flex flex-col">
+    <div className="h-full min-h-0 bg-background overflow-y-auto overscroll-contain flex flex-col">
       <div className="px-6 pt-6 shrink-0 flex items-center justify-between">
         <button
           onClick={() => onNavigate?.('welcome')}
@@ -64,7 +71,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </button>
       </div>
 
-      <form onSubmit={handleLogIn} className="flex-1 min-h-0 flex flex-col px-6 pt-8 pb-4">
+      <form onSubmit={handleLogIn} className="flex-1 min-h-fit flex flex-col px-6 pt-8 pb-8">
         <div className="mb-7">
           <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Log in</h1>
           <p className="text-sm text-muted-foreground">Access your saved collection</p>
@@ -84,6 +91,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
                   if (accountError) setAccountError('');
                 }}
                 onBlur={() => setEmailError(!isValidEmail(email.trim()))}
+                onFocus={keepFieldVisible}
                 placeholder="you@example.com"
                 className={`w-full h-12 pl-8 pr-4 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
                   emailError || accountError ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : 'border-border/50 focus:ring-primary/50 focus:border-primary'
@@ -116,6 +124,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
                   if (accountError) setAccountError('');
                 }}
                 placeholder="Enter your password"
+                onFocus={keepFieldVisible}
                 className={`w-full h-12 pl-8 pr-11 bg-card/30 backdrop-blur-xl rounded-xl border outline-none focus:ring-2 transition-all text-foreground placeholder:text-muted-foreground ${
                   passwordError || accountError ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : 'border-border/50 focus:ring-primary/50 focus:border-primary'
                 }`}
@@ -139,7 +148,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </div>
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))] bg-background">
+      <div className="sticky bottom-0 shrink-0 px-6 pt-4 pb-[calc(24px+env(safe-area-inset-bottom))] bg-background">
         <Button
           onClick={handleLogIn as any}
           fullWidth

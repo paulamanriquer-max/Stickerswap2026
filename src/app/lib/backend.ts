@@ -8,7 +8,7 @@ import {
   supabaseResetPasswordWithRecovery,
   supabaseSignUp,
 } from './supabaseClient';
-import { MARKET_NAME } from './location';
+import { MARKET_NAME, MARKET_RADIUS_KM } from './location';
 
 export interface AppUser {
   id: string;
@@ -292,6 +292,30 @@ const fetchCurrentProfile = async (userId: string, accessToken: string): Promise
   return profile ? toAppUser(profile) : null;
 };
 
+const ensureCurrentProfile = async (
+  userId: string,
+  accessToken: string,
+  fallback: { username?: string; email?: string | null } = {}
+): Promise<AppUser | null> => {
+  const existing = await fetchCurrentProfile(userId, accessToken);
+  if (existing) return existing;
+
+  try {
+    const repairedRows = await supabaseRpc<SupabaseProfile[]>(
+      'ensure_my_profile',
+      {
+        p_username: fallback.username || fallback.email?.split('@')[0] || 'Collector',
+        p_email: fallback.email || null,
+      },
+      accessToken
+    );
+    const repaired = repairedRows[0];
+    return repaired ? toAppUser(repaired) : null;
+  } catch {
+    return null;
+  }
+};
+
 const fetchSupabaseStickers = async (accessToken: string): Promise<StickerState[]> => {
   const rows = await supabaseRest<SupabaseStickerRow[]>(
     '/rest/v1/user_stickers?select=sticker_code,owned,missing,duplicate_count,updated_at',
@@ -448,7 +472,10 @@ export const backend = {
         refresh_token: 'refresh_token' in auth ? auth.refresh_token : undefined,
         expires_in: 'expires_in' in auth ? auth.expires_in as number : undefined,
       }));
-      const createdUser = await fetchCurrentProfile(userId, accessToken);
+      const createdUser = await ensureCurrentProfile(userId, accessToken, {
+        username: name.trim(),
+        email: normalizedEmail,
+      });
       if (!createdUser) throw new Error('PROFILE_NOT_READY');
       writeJson(USER_KEY, createdUser);
       backend.track('username_created', { user_id: createdUser.id, username: createdUser.username });
@@ -496,7 +523,9 @@ export const backend = {
       try {
         const auth = await supabaseLogIn(normalizedEmail, password);
         writeSupabaseSession(toStoredSession(auth));
-        const signedInUser = await fetchCurrentProfile(auth.user.id, auth.access_token);
+        const signedInUser = await ensureCurrentProfile(auth.user.id, auth.access_token, {
+          email: normalizedEmail,
+        });
         if (!signedInUser) throw new Error('PROFILE_NOT_READY');
         writeJson(USER_KEY, signedInUser);
         return signedInUser;
@@ -1140,7 +1169,7 @@ export const backend = {
 
     const rows = await supabaseRpc<SupabaseComparisonRow[]>(
       'find_matches',
-      { p_radius_km: 50, p_limit: 50 },
+      { p_radius_km: MARKET_RADIUS_KM, p_limit: 50 },
       session.accessToken
     );
     const comparisons = rows.map(toComparison);

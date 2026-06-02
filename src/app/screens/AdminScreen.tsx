@@ -513,16 +513,23 @@ function IssuesTab({ issues, setIssues }: { issues: Issue[]; setIssues: React.Di
   );
 }
 
-function ChatsModTab({ messages, setMessages }: { messages: ChatMessage[]; setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>> }) {
+function ChatsModTab({
+  messages,
+  setMessages,
+  onDeleteMessage,
+  deletingMessageId,
+}: {
+  messages: ChatMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  onDeleteMessage: (id: string) => void;
+  deletingMessageId: string | null;
+}) {
   const [selectedCity, setSelectedCity] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const cities = ['all', ...Array.from(new Set(messages.map(m => m.city)))];
   const filtered = messages.filter(m => selectedCity === 'all' || m.city === selectedCity);
   const flaggedCount = messages.filter(m => m.flagged).length;
-
-  const deleteMessage = (id: string) =>
-    setMessages(prev => prev.filter(m => m.id !== id));
 
   const toggleFlag = (id: string) =>
     setMessages(prev => prev.map(m => m.id === id ? { ...m, flagged: !m.flagged } : m));
@@ -595,10 +602,11 @@ function ChatsModTab({ messages, setMessages }: { messages: ChatMessage[]; setMe
                     <AlertTriangle className="w-3.5 h-3.5" /> {msg.flagged ? 'Unflag' : 'Flag'}
                   </button>
                   <button
-                    onClick={() => deleteMessage(msg.id)}
+                    onClick={() => onDeleteMessage(msg.id)}
+                    disabled={deletingMessageId === msg.id}
                     className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg border border-destructive/40 text-destructive text-xs font-semibold active:scale-95 transition-all"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                    <Trash2 className="w-3.5 h-3.5" /> {deletingMessageId === msg.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>
@@ -626,6 +634,23 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
   });
   const [isLoadingLiveData, setIsLoadingLiveData] = useState(true);
   const [adminDataError, setAdminDataError] = useState('');
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+
+  const refreshAdminReport = () => {
+    setIsLoadingLiveData(true);
+    setAdminDataError('');
+
+    return backend.getAdminReport()
+      .then(report => {
+        setUsers(report.users);
+        setChatMessages(report.publicMessages);
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : '';
+        setAdminDataError(`Live admin data is not connected yet. ${message || 'Run the Supabase admin report setup before launch.'}`);
+      })
+      .finally(() => setIsLoadingLiveData(false));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -651,6 +676,18 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
       isMounted = false;
     };
   }, []);
+
+  const deletePublicMessage = (id: string) => {
+    if (deletingMessageId) return;
+    setDeletingMessageId(id);
+    backend.adminDeletePublicMessage(id)
+      .then(() => refreshAdminReport())
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : '';
+        setAdminDataError(`Could not delete that message from the live app. ${message || 'Try again.'}`);
+      })
+      .finally(() => setDeletingMessageId(null));
+  };
 
   const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <BarChart2 className="w-4 h-4" /> },
@@ -701,7 +738,14 @@ export function AdminScreen({ onLogout }: AdminScreenProps) {
         {activeTab === 'dashboard' && <Dashboard users={users} />}
         {activeTab === 'users'     && <UsersTab users={users} setUsers={setUsers} />}
         {activeTab === 'issues'    && <IssuesTab issues={issues} setIssues={setIssues} />}
-        {activeTab === 'chats'     && <ChatsModTab messages={chatMessages} setMessages={setChatMessages} />}
+        {activeTab === 'chats'     && (
+          <ChatsModTab
+            messages={chatMessages}
+            setMessages={setChatMessages}
+            onDeleteMessage={deletePublicMessage}
+            deletingMessageId={deletingMessageId}
+          />
+        )}
       </div>
 
       {/* Bottom navigation — mirrors BottomNavigation component pattern */}

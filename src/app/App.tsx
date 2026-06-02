@@ -192,7 +192,7 @@ export default function App() {
       }).catch(() => {});
     };
     refreshMessages();
-    const interval = window.setInterval(refreshMessages, 5000);
+    const interval = window.setInterval(refreshMessages, 2000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);

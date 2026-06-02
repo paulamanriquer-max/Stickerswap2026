@@ -1049,6 +1049,21 @@ export const backend = {
     };
   },
 
+  async adminDeletePublicMessage(messageId: string): Promise<boolean> {
+    if (usingSupabase()) {
+      await supabaseRpc<boolean>('admin_delete_public_message', {
+        p_admin_email: ADMIN_EMAIL,
+        p_admin_password: ADMIN_PASSWORD,
+        p_message_id: messageId,
+      });
+      return true;
+    }
+
+    const nextMessages = backend.loadPublicMessages().filter(message => message.id !== messageId);
+    backend.savePublicMessages(nextMessages);
+    return true;
+  },
+
   getCollectorComparisons(currentStickers: StickerState[]): CollectorComparison[] {
     if (usingSupabase()) {
       return readJson<CollectorComparison[]>(SUPABASE_COMPARISONS_KEY, []);

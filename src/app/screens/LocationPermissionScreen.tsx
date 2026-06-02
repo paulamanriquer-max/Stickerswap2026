@@ -9,7 +9,7 @@ interface LocationPermissionScreenProps {
 }
 
 export function LocationPermissionScreen({
-  city = 'Kansas City',
+  city = 'Kansas City Metro',
   onAllow,
   onSkip,
   onBack,
@@ -35,7 +35,7 @@ export function LocationPermissionScreen({
 
         <h1 className="text-2xl font-bold text-foreground tracking-tight mb-2">Allow location?</h1>
         <p className="text-sm leading-6 text-muted-foreground mb-6">
-          StickerSwap uses your location to find nearby collectors in {city}. You can turn this on or off anytime in settings.
+          StickerSwap uses your location to find nearby collectors in the {city}, including Overland Park, North Kansas City, and Independence. You can turn this on or off anytime in settings.
         </p>
 
         <div className="space-y-3">
@@ -45,7 +45,7 @@ export function LocationPermissionScreen({
               <div>
                 <h3 className="text-sm font-bold text-foreground">Better local matches</h3>
                 <p className="text-xs leading-5 text-muted-foreground mt-1">
-                  We only need this for nearby trade matching. For this MVP, the market stays focused on {city}.
+                  We only need this for nearby trade matching. For this MVP, the market stays focused on the {city}.
                 </p>
               </div>
             </div>

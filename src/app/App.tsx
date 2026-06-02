@@ -25,6 +25,7 @@ import { UpgradePrompt } from './components/UpgradePrompt';
 import { AppUser, backend, shouldPromptForUpgrade, StickerState } from './lib/backend';
 import { installNotificationFeedbackUnlock, showDeviceNotification } from './lib/notificationFeedback';
 import { applyStickerStatus, createDefaultStickerStates, normalizeStickerStates, setStickerStatus, StickerStatus } from './lib/stickerState';
+import { isInKansasCityMetro, MARKET_NAME, PUBLIC_MARKET_ROOM_NAME } from './lib/location';
 
 type Screen =
   | 'welcome'
@@ -74,8 +75,8 @@ interface Conversation {
   lastMessageTime?: Date;
 }
 
-const MVP_CITY = 'Kansas City';
-const PUBLIC_ROOM_NAME = `${MVP_CITY} Community`;
+const MVP_CITY = MARKET_NAME;
+const PUBLIC_ROOM_NAME = PUBLIC_MARKET_ROOM_NAME;
 const LAST_SEEN_PUBLIC_CHAT_KEY = 'stickerswap.lastSeenPublicChatAt';
 const LAST_SEEN_PRIVATE_CHAT_KEY = 'stickerswap.lastSeenPrivateChatAt';
 
@@ -253,6 +254,10 @@ export default function App() {
   ), [publicMessages, lastSeenPublicChatAt]);
 
   const totalUnreadChats = publicUnreadCount + Object.values(privateUnreadByUser).reduce((sum, count) => sum + count, 0);
+  const isOutsideKansasCityMarket = useMemo(() => {
+    if (typeof user?.latitude !== 'number' || typeof user?.longitude !== 'number') return false;
+    return !isInKansasCityMetro(user.latitude, user.longitude);
+  }, [user?.latitude, user?.longitude]);
 
   const markPublicChatRead = useCallback(() => {
     const nextSeenAt = Math.max(Date.now(), latestMessageTime(publicMessages));
@@ -713,17 +718,26 @@ export default function App() {
         );
 
       case 'chat':
+        const isViewingPublicChat = isPublicRoom(selectedChatUser);
+        const publicChatBlocked = isViewingPublicChat && isOutsideKansasCityMarket;
+        const privateChatBlocked = !isViewingPublicChat && !user?.email;
         return (
           <ChatScreen
             username={selectedChatUser}
-            messages={isPublicRoom(selectedChatUser) ? publicMessages : conversations.find(c => c.username === selectedChatUser)?.messages || []}
-            isPublic={isPublicRoom(selectedChatUser)}
-            canSend={isPublicRoom(selectedChatUser) || Boolean(user?.email)}
+            messages={isViewingPublicChat ? publicMessages : conversations.find(c => c.username === selectedChatUser)?.messages || []}
+            isPublic={isViewingPublicChat}
+            canSend={isViewingPublicChat ? !publicChatBlocked : Boolean(user?.email)}
             errorMessage={chatError}
+            blockedMessage={publicChatBlocked
+              ? 'StickerSwap public chat is currently limited to Kansas City metro collectors while we test this MVP.'
+              : privateChatBlocked
+                ? 'Add your email to send private messages.'
+                : ''}
+            blockedActionLabel={privateChatBlocked ? 'Add email to chat and trade with others' : ''}
             onBack={() => setCurrentScreen('chats')}
             onUpgradeRequest={() => requestUpgrade('Add your email to chat and trade with others')}
             onSendMessage={(text) => {
-              if (isPublicRoom(selectedChatUser)) handleSendPublicMessage(text);
+              if (isViewingPublicChat) handleSendPublicMessage(text);
               else handleSendMessage(selectedChatUser, text, selectedChatUserId);
             }}
           />

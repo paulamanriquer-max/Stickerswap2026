@@ -1,5 +1,6 @@
 import { ChevronRight, MapPin, Bell, Shield, User as UserIcon, LogOut } from 'lucide-react';
 import { AppUser } from '../lib/backend';
+import { formatMetroLocation } from '../lib/location';
 
 interface Sticker {
   code: string;
@@ -29,6 +30,7 @@ export function ProfileScreen({ onNavigate, onLogout, stickers = [], user }: Pro
   const completionLabel = completionValue > 0 && completionValue < 1
     ? '<1%'
     : `${Math.round(completionValue)}%`;
+  const locationLabel = formatMetroLocation(user?.latitude, user?.longitude);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -46,6 +48,10 @@ export function ProfileScreen({ onNavigate, onLogout, stickers = [], user }: Pro
             <h3 className="font-semibold text-base">{user?.username || 'Collector'}</h3>
             <p className="text-xs text-muted-foreground">
               {user?.email || 'Email-backed account'}
+            </p>
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="h-3 w-3 text-primary" />
+              <span>{locationLabel}</span>
             </p>
           </div>
         </div>

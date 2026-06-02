@@ -65,7 +65,8 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         <button
           type="button"
           onClick={() => onNavigate?.('admin-login')}
-          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors tracking-widest uppercase"
+          className="text-[9px] text-muted-foreground/15 transition-colors tracking-widest uppercase opacity-40 active:opacity-70"
+          aria-label="Admin login"
         >
           Admin
         </button>

@@ -95,7 +95,7 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
   const emptyTitle = view === 'matches' ? 'No sticker matches yet' : 'No collectors found';
   const emptyDescription = view === 'matches'
     ? 'No collector currently has duplicates from your missing list. Switch to All collectors to browse everyone who has joined.'
-    : 'No other Kansas City collectors have joined yet. New testers will appear here after they create accounts.';
+    : 'No other Kansas City metro collectors have joined yet. New testers will appear here after they create accounts.';
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -103,7 +103,7 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
       <div className="px-4 pt-6 pb-2">
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-foreground mb-1">Collectors</h1>
-          <p className="text-sm text-muted-foreground">Browse Kansas City collectors and trade matches</p>
+          <p className="text-sm text-muted-foreground">Browse Kansas City metro collectors and trade matches</p>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
               <h3>
                 {view === 'matches'
                   ? `${filteredCollectors.length} sticker match${filteredCollectors.length === 1 ? '' : 'es'}`
-                  : `${filteredCollectors.length} collectors in Kansas City`}
+                  : `${filteredCollectors.length} collectors in ${city}`}
               </h3>
               <div className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-full">
                 <MapPin className="w-4 h-4 text-primary" />
@@ -158,7 +158,7 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
                   matchesCount={collector.matches.length}
                   theyNeedCount={collector.theyNeed.length}
                   onClick={() => onCollectorClick(collector.id)}
-                  city={city}
+                  city={collector.distance}
                 />
               ))}
             </div>

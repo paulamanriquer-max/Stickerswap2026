@@ -1,6 +1,7 @@
 import { ArrowLeft, MapPin, Navigation } from 'lucide-react';
 import { AppUser } from '../lib/backend';
 import { Toggle } from '../components/Toggle';
+import { formatMetroLocation } from '../lib/location';
 
 interface LocationSettingsScreenProps {
   onBack?: () => void;
@@ -12,12 +13,13 @@ interface LocationSettingsScreenProps {
 
 export function LocationSettingsScreen({
   onBack,
-  city = 'Kansas City',
+  city = 'Kansas City Metro',
   user,
   onEnableLocation,
   onDisableLocation,
 }: LocationSettingsScreenProps) {
   const locationEnabled = Boolean(user?.latitude && user?.longitude);
+  const locationLabel = formatMetroLocation(user?.latitude, user?.longitude);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -42,6 +44,7 @@ export function LocationSettingsScreen({
               <div>
                 <h3 className="font-semibold text-foreground">Trading Market</h3>
                 <p className="text-xs text-muted-foreground">{city}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Includes Overland Park, North Kansas City, and Independence.</p>
               </div>
             </div>
           </div>
@@ -53,8 +56,8 @@ export function LocationSettingsScreen({
                 <h3 className="font-semibold text-foreground">Location Matching</h3>
                 <p className="text-xs text-muted-foreground">
                   {locationEnabled
-                    ? 'On. Nearby matches can use your current location.'
-                    : 'Off. You will still be shown in the Kansas City market.'}
+                    ? `On. Your profile location shows as ${locationLabel}.`
+                    : `Off. You will still be shown in the ${city} market.`}
                 </p>
               </div>
               <Toggle enabled={locationEnabled} onChange={locationEnabled ? onDisableLocation : onEnableLocation} />

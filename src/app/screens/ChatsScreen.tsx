@@ -129,7 +129,7 @@ export function ChatsScreen({
             {publicMessages.length === 0 && (
               <div className="rounded-xl border border-border/50 bg-card/30 p-4 text-center">
                 <MessageCircle className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                <h3 className="text-sm font-bold text-foreground">Start the Kansas City collector chat</h3>
+                <h3 className="text-sm font-bold text-foreground">Start the Kansas City metro collector chat</h3>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   Share what you need, what you have to trade, or where you want to meet.
                 </p>

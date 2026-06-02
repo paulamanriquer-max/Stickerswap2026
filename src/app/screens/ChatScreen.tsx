@@ -16,12 +16,25 @@ interface ChatScreenProps {
   isPublic?: boolean;
   canSend?: boolean;
   errorMessage?: string;
+  blockedMessage?: string;
+  blockedActionLabel?: string;
   onBack: () => void;
   onSendMessage: (text: string) => void;
   onUpgradeRequest?: () => void;
 }
 
-export function ChatScreen({ username, messages = [], isPublic = false, canSend = true, errorMessage = '', onBack, onSendMessage, onUpgradeRequest }: ChatScreenProps) {
+export function ChatScreen({
+  username,
+  messages = [],
+  isPublic = false,
+  canSend = true,
+  errorMessage = '',
+  blockedMessage = '',
+  blockedActionLabel = '',
+  onBack,
+  onSendMessage,
+  onUpgradeRequest,
+}: ChatScreenProps) {
   const [message, setMessage] = useState('');
   const [viewportStyle, setViewportStyle] = useState<CSSProperties>({ height: '100dvh' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -106,7 +119,9 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground text-sm">{canSend ? 'No messages yet. Start the conversation!' : 'Add your email to send private messages.'}</p>
+            <p className="text-center text-muted-foreground text-sm">
+              {canSend ? 'No messages yet. Start the conversation!' : blockedMessage || 'Add your email to send private messages.'}
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -150,12 +165,15 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
 
       {!canSend && (
         <div className="shrink-0 px-4 py-3 bg-primary/10 border-t border-primary/20">
-          <button
-            onClick={onUpgradeRequest}
-            className="h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground active:scale-95"
-          >
-            Add email to chat and trade with others
-          </button>
+          <p className="text-xs leading-5 text-muted-foreground">{blockedMessage || 'Add your email to send private messages.'}</p>
+          {blockedActionLabel && (
+            <button
+              onClick={onUpgradeRequest}
+              className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground active:scale-95"
+            >
+              {blockedActionLabel}
+            </button>
+          )}
         </div>
       )}
 
@@ -178,7 +196,7 @@ export function ChatScreen({ username, messages = [], isPublic = false, canSend 
                 handleSend();
               }
             }}
-            placeholder="Type a message..."
+            placeholder={canSend ? 'Type a message...' : 'Chat is limited during the Kansas City MVP'}
             disabled={!canSend}
             className="min-w-0 flex-1 h-11 max-h-11 resize-none overflow-hidden px-4 py-[10px] bg-card/50 backdrop-blur-xl rounded-full border border-border/50 outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground"
           />

@@ -8,6 +8,7 @@ import {
   supabaseResetPasswordWithRecovery,
   supabaseSignUp,
 } from './supabaseClient';
+import { MARKET_NAME } from './location';
 
 export interface AppUser {
   id: string;
@@ -309,7 +310,7 @@ const toComparison = (row: SupabaseComparisonRow): CollectorComparison => ({
   id: row.user_id,
   username: row.username,
   email: row.email,
-  distance: row.distance_km && row.distance_km > 0 ? `${row.distance_km.toFixed(1)} km` : 'Kansas City',
+  distance: row.distance_km && row.distance_km > 0 ? `${row.distance_km.toFixed(1)} km` : MARKET_NAME,
   matchScore: row.match_score,
   matches: row.matches || [],
   youNeed: row.you_need || [],
@@ -1013,7 +1014,7 @@ export const backend = {
         stickers: collected,
         trades: account.conversations.length,
         status: account.status,
-        location: 'Kansas City',
+        location: MARKET_NAME,
       };
     }).sort((a, b) => b.joinedAt.localeCompare(a.joinedAt));
   },
@@ -1031,7 +1032,7 @@ export const backend = {
           status: user.status || 'active',
           stickers: Number(user.stickers || 0),
           trades: Number(user.trades || 0),
-          location: user.location || 'Kansas City',
+          location: user.location || MARKET_NAME,
         })),
         publicMessages: report.publicMessages || [],
       };
@@ -1043,7 +1044,7 @@ export const backend = {
         id: message.id,
         user: message.sender,
         room: 'Public Chat',
-        city: 'Kansas City',
+        city: MARKET_NAME,
         message: message.text,
         timestamp: new Date(message.timestamp).toLocaleString(),
         flagged: false,
@@ -1119,7 +1120,7 @@ export const backend = {
           id: account.user.id,
           username: account.user.username,
           email: account.user.email || account.user.id,
-          distance: account.user.latitude && account.user.longitude ? 'Nearby' : 'Kansas City',
+          distance: account.user.latitude && account.user.longitude ? 'Nearby' : MARKET_NAME,
           matchScore,
           matches,
           youNeed: currentMissing,

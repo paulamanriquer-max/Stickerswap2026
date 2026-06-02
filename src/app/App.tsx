@@ -496,6 +496,7 @@ export default function App() {
 
   const showBottomNav = hasCompletedOnboarding &&
     ['album', 'matches', 'chats', 'profile'].includes(currentScreen);
+  const isFixedScreen = ['welcome', 'sign-in', 'sign-up'].includes(currentScreen);
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -742,8 +743,8 @@ export default function App() {
   };
 
   return (
-    <div className="size-full bg-background overflow-auto dark">
-      <div className="max-w-md mx-auto min-h-screen relative bg-background">
+    <div className={`h-dvh w-full bg-background overscroll-none dark ${isFixedScreen ? 'overflow-hidden' : 'overflow-auto'}`}>
+      <div className={`max-w-md mx-auto relative bg-background ${isFixedScreen ? 'h-full overflow-hidden' : 'min-h-screen'}`}>
         {renderScreen()}
 
         {showBottomNav && (

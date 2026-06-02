@@ -743,7 +743,7 @@ export default function App() {
   };
 
   return (
-    <div className={`h-dvh w-full bg-background overscroll-none dark ${isFixedScreen ? 'overflow-hidden' : 'overflow-auto'}`}>
+    <div className={`w-full bg-background overscroll-none dark ${isFixedScreen ? 'h-[100svh] overflow-hidden' : 'h-dvh overflow-auto'}`}>
       <div className={`max-w-md mx-auto relative bg-background ${isFixedScreen ? 'h-full overflow-hidden' : 'min-h-screen'}`}>
         {renderScreen()}
 

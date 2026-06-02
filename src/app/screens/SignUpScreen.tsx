@@ -93,7 +93,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-dvh min-h-screen bg-background overflow-hidden flex flex-col">
       <div className="px-6 pt-6 shrink-0">
         <button
           onClick={() => step === 'recovery' ? setStep('account') : onNavigate?.('welcome')}
@@ -104,8 +104,8 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
         </button>
       </div>
 
-      <form onSubmit={step === 'account' ? handleContinue : handleCreateAccount} className="flex-1 flex flex-col px-6 pt-10 pb-6 overflow-y-auto">
-        <div className="mb-10">
+      <form onSubmit={step === 'account' ? handleContinue : handleCreateAccount} className="flex-1 min-h-0 flex flex-col px-6 pt-8 pb-4">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Create account</h1>
           <p className="text-sm text-muted-foreground">
             {step === 'account'
@@ -256,7 +256,7 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
         )}
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-10 bg-background">
+      <div className="shrink-0 px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] bg-background">
         <Button
           onClick={(step === 'account' ? handleContinue : handleCreateAccount) as any}
           fullWidth

@@ -46,7 +46,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-dvh min-h-screen bg-background overflow-hidden flex flex-col">
       <div className="px-6 pt-6 shrink-0">
         <button
           onClick={() => onNavigate?.('welcome')}
@@ -57,8 +57,8 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </button>
       </div>
 
-      <form onSubmit={handleLogIn} className="flex-1 flex flex-col px-6 pt-10 pb-6 overflow-y-auto">
-        <div className="mb-10">
+      <form onSubmit={handleLogIn} className="flex-1 min-h-0 flex flex-col px-6 pt-8 pb-4">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Log in</h1>
           <p className="text-sm text-muted-foreground">Access your saved collection</p>
         </div>
@@ -132,7 +132,7 @@ export function SignInScreen({ onNavigate, onEmailSignIn }: SignInScreenProps) {
         </div>
       </form>
 
-      <div className="shrink-0 px-6 pt-4 pb-10 bg-background">
+      <div className="shrink-0 px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] bg-background">
         <Button
           onClick={handleLogIn as any}
           fullWidth

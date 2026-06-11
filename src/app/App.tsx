@@ -22,7 +22,7 @@ import { AdminLoginScreen } from './screens/AdminLoginScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { AddEmailScreen } from './screens/AddEmailScreen';
 import { UpgradePrompt } from './components/UpgradePrompt';
-import { AppUser, backend, shouldPromptForUpgrade, StickerState } from './lib/backend';
+import { AppUser, backend, CollectorComparison, shouldPromptForUpgrade, StickerState } from './lib/backend';
 import { installNotificationFeedbackUnlock, showDeviceNotification } from './lib/notificationFeedback';
 import { applyStickerStatus, createDefaultStickerStates, normalizeStickerStates, setStickerStatus, StickerStatus } from './lib/stickerState';
 import { isInKansasCityMetro, MARKET_NAME, PUBLIC_MARKET_ROOM_NAME } from './lib/location';
@@ -117,6 +117,7 @@ export default function App() {
   const [stickers, setStickers] = useState<Sticker[]>(() => normalizeStickerStates(backend.loadStickers()));
   const [conversations, setConversations] = useState<Conversation[]>(() => backend.loadConversations<Conversation>());
   const [publicMessages, setPublicMessages] = useState<Message[]>(() => backend.loadPublicMessages());
+  const [collectorComparisons, setCollectorComparisons] = useState<CollectorComparison[]>(() => backend.getCollectorComparisons(backend.loadStickers()));
   const [upgradePrompt, setUpgradePrompt] = useState<{ title?: string; message?: string } | null>(null);
   const [chatError, setChatError] = useState('');
   const [lastSeenPublicChatAt, setLastSeenPublicChatAt] = useState(() => Number(localStorage.getItem(LAST_SEEN_PUBLIC_CHAT_KEY) || 0));
@@ -224,6 +225,21 @@ export default function App() {
       window.clearInterval(interval);
     };
   }, [currentScreen, user?.id]);
+
+  useEffect(() => {
+    if (!user || !['matches', 'match-detail', 'chats', 'chat'].includes(currentScreen)) return;
+    let cancelled = false;
+    void backend.refreshCollectorComparisons()
+      .then(nextCollectors => {
+        if (!cancelled) setCollectorComparisons(nextCollectors);
+      })
+      .catch(() => {
+        if (!cancelled) setCollectorComparisons(backend.getCollectorComparisons(stickers as StickerState[]));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentScreen, stickers, user?.id]);
 
   useEffect(() => {
     void backend.saveStickers(stickers as StickerState[]).catch(() => {
@@ -455,7 +471,7 @@ export default function App() {
     const resolvedReceiverId =
       receiverId ||
       conversations.find(c => c.username === username)?.userId ||
-      backend.getCollectorComparisons(stickers as StickerState[]).find(c => c.username === username)?.id ||
+      collectorComparisons.find(c => c.username === username)?.id ||
       '';
 
     if (!resolvedReceiverId) {
@@ -653,13 +669,12 @@ export default function App() {
             }}
             city={MVP_CITY}
             stickers={stickers as StickerState[]}
+            onCollectorsChange={setCollectorComparisons}
           />
         );
 
       case 'match-detail': {
-        const selectedComparison = backend
-          .getCollectorComparisons(stickers as StickerState[])
-          .find(collector => collector.id === selectedCollector);
+        const selectedComparison = collectorComparisons.find(collector => collector.id === selectedCollector);
         const selectedChatTarget = selectedComparison?.username || selectedCollector;
 
         return (

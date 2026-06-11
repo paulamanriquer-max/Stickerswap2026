@@ -11,6 +11,7 @@ interface MatchesScreenProps {
   onCollectorClick: (collectorId: string) => void;
   city: string;
   stickers: StickerState[];
+  onCollectorsChange?: (collectors: CollectorComparison[]) => void;
 }
 
 type CollectorView = 'matches' | 'all';
@@ -63,7 +64,7 @@ const notifyNewMatches = (collectors: CollectorComparison[]) => {
   saveNotifiedMatchIds(currentMatchIds);
 };
 
-export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScreenProps) {
+export function MatchesScreen({ onCollectorClick, city, stickers, onCollectorsChange }: MatchesScreenProps) {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<CollectorView>('matches');
   const [collectors, setCollectors] = useState<CollectorComparison[]>(() => backend.getCollectorComparisons(stickers));
@@ -77,10 +78,14 @@ export function MatchesScreen({ onCollectorClick, city, stickers }: MatchesScree
       .then(nextCollectors => {
         if (!isMounted) return;
         setCollectors(nextCollectors);
+        onCollectorsChange?.(nextCollectors);
         notifyNewMatches(nextCollectors);
       })
       .catch(() => {
-        if (isMounted) setCollectors(backend.getCollectorComparisons(stickers));
+        if (!isMounted) return;
+        const fallbackCollectors = backend.getCollectorComparisons(stickers);
+        setCollectors(fallbackCollectors);
+        onCollectorsChange?.(fallbackCollectors);
       });
     return () => {
       isMounted = false;

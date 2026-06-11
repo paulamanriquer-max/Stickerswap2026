@@ -273,7 +273,11 @@ function SubpageView({
   };
 
   const handleDuplicateCountChange = (code: string, count: number) => {
-    onUpdateSticker(code, { owned: count > 0, missing: false, duplicateCount: count });
+    onUpdateSticker(code, {
+      owned: true,
+      missing: false,
+      duplicateCount: Math.max(0, count),
+    });
   };
 
   return (

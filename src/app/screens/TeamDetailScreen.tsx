@@ -129,7 +129,11 @@ export function TeamDetailScreen({ teamCode, onBack, onStickerClick, stickers, o
   };
 
   const handleDuplicateCountChange = (code: string, newCount: number) => {
-    onUpdateSticker(code, { owned: newCount > 0, missing: false, duplicateCount: newCount });
+    onUpdateSticker(code, {
+      owned: true,
+      missing: false,
+      duplicateCount: Math.max(0, newCount),
+    });
   };
 
   const handleDelete = (code: string) => {

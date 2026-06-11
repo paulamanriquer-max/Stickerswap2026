@@ -52,10 +52,15 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
         onDuplicateCountChange?.(duplicateCount + 1);
         return; // Don't close sheet for counter actions
       case 'decrement':
-        if (duplicateCount > 1) {
-          onDuplicateCountChange?.(duplicateCount - 1);
+        if (duplicateCount > 0) {
+          const nextCount = Math.max(0, duplicateCount - 1);
+          onDuplicateCountChange?.(nextCount);
+          if (nextCount === 0) closeActionSheet();
         }
         return; // Don't close sheet for counter actions
+      case 'removeDuplicate':
+        onDuplicateCountChange?.(0);
+        break;
     }
     closeActionSheet();
   };
@@ -203,12 +208,14 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                 <>
                   <div className="p-4 bg-muted/30 rounded-xl border border-border/50">
                     <label className="block text-sm font-semibold text-foreground">Duplicate Count</label>
-                    <p className="text-xs text-muted-foreground mt-1 mb-3">You own this sticker and have extras available to trade.</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-3">
+                      You own this sticker. Duplicates are extras available to trade.
+                    </p>
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => handleAction('decrement')}
-                        disabled={duplicateCount <= 1}
-                        className="w-12 h-12 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-12 h-12 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all active:scale-95"
+                        aria-label={duplicateCount === 1 ? 'Remove duplicate' : 'Decrease duplicate count'}
                       >
                         <Minus className="w-5 h-5 text-primary" />
                       </button>
@@ -221,6 +228,13 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                       </button>
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleAction('removeDuplicate')}
+                    className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
+                  >
+                    <span className="font-semibold text-foreground">Remove duplicate</span>
+                    <span className="block text-xs text-muted-foreground mt-1">Keeps this sticker owned and removes it from your trade extras.</span>
+                  </button>
                   <button
                     onClick={() => handleAction('missing')}
                     className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
@@ -255,8 +269,8 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => handleAction('decrement')}
-                        disabled={duplicateCount <= 1}
-                        className="w-12 h-12 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-12 h-12 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/30 flex items-center justify-center transition-all active:scale-95"
+                        aria-label={duplicateCount === 1 ? 'Remove duplicate' : 'Decrease duplicate count'}
                       >
                         <Minus className="w-5 h-5 text-primary" />
                       </button>
@@ -269,6 +283,13 @@ export function StickerCard({ code, playerName, owned, missing, duplicateCount, 
                       </button>
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleAction('removeDuplicate')}
+                    className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"
+                  >
+                    <span className="font-semibold text-foreground">Remove duplicate</span>
+                    <span className="block text-xs text-muted-foreground mt-1">Keeps this sticker owned and removes it from your trade extras.</span>
+                  </button>
                   <button
                     onClick={() => handleAction('owned')}
                     className="w-full p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/50 transition-all active:scale-95 text-left"

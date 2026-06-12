@@ -99,7 +99,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
         <div className="flex items-center gap-1 px-2 pr-3 py-1 rounded-full mt-4 mb-3 shrink-0" style={{ backgroundColor: "#fff838" }}>
           <MapPin className="w-4 h-4" style={{ color: "#1E1E1E" }} />
           <span className="text-[16px] font-medium" style={{ color: "#090f1e", fontFamily: "var(--font-body)" }}>
-            Kansas City
+            Kansas City v2
           </span>
         </div>
       </div>
@@ -123,7 +123,6 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
           <p className="text-center text-xs leading-5 text-white/50">
             Create an account with your name and email to keep your collection protected.
           </p>
-          <p className="text-center text-[10px] leading-none text-white/25">Live Supabase fix 2</p>
         </div>
       </div>
     </div>

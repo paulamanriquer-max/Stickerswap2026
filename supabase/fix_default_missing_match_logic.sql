@@ -52,11 +52,6 @@ as $$
     where p.id <> auth.uid()
       and p.status = 'active'
       and p.profile_visible = true
-      and (
-        me.location_enabled = false
-        or p.location_enabled = false
-        or public.distance_km(me.latitude, me.longitude, p.latitude, p.longitude) <= p_radius_km
-      )
   ),
   other_missing as (
     select

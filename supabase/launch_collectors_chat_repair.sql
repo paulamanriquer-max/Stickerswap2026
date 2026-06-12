@@ -217,10 +217,12 @@ as $$
     select * from public.profiles where id = auth.uid()
   ),
   my_missing as (
-    select sticker_code
-    from public.user_stickers
-    where user_id = auth.uid()
-      and coalesce(owned, false) = false
+    select stickers.code as sticker_code
+    from public.stickers
+    left join public.user_stickers
+      on user_stickers.user_id = auth.uid()
+      and user_stickers.sticker_code = stickers.code
+    where coalesce(user_stickers.owned, false) = false
       and coalesce(duplicate_count, 0) = 0
   ),
   my_duplicates as (
@@ -252,29 +254,18 @@ as $$
       and p.status = 'active'
       and p.profile_visible = true
       and lower(coalesce(p.email, '')) <> 'paulaadmin@stickerswap.com'
-      and (
-        me.location_enabled = false
-        or p.location_enabled = false
-        or me.latitude is null
-        or me.longitude is null
-        or p.latitude is null
-        or p.longitude is null
-        or (
-          6371 * acos(
-            least(1, greatest(-1,
-              cos(radians(me.latitude)) * cos(radians(p.latitude)) *
-              cos(radians(p.longitude) - radians(me.longitude)) +
-              sin(radians(me.latitude)) * sin(radians(p.latitude))
-            ))
-          )
-        ) <= p_radius_km
-      )
   ),
   other_missing as (
-    select user_id, sticker_code
-    from public.user_stickers
-    where coalesce(owned, false) = false
-      and coalesce(duplicate_count, 0) = 0
+    select
+      visible_users.id as user_id,
+      stickers.code as sticker_code
+    from visible_users
+    cross join public.stickers
+    left join public.user_stickers
+      on user_stickers.user_id = visible_users.id
+      and user_stickers.sticker_code = stickers.code
+    where coalesce(user_stickers.owned, false) = false
+      and coalesce(user_stickers.duplicate_count, 0) = 0
   ),
   scored as (
     select

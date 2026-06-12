@@ -419,10 +419,24 @@ const getCurrentAccount = () => {
 
 export const backend = {
   loadUser(): AppUser | null {
+    if (usingSupabase()) {
+      const session = readSupabaseSession();
+      if (!session?.accessToken) {
+        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(STICKERS_KEY);
+        localStorage.removeItem(CONVERSATIONS_KEY);
+        localStorage.removeItem(PUBLIC_MESSAGES_KEY);
+        localStorage.removeItem(SUPABASE_COMPARISONS_KEY);
+        return null;
+      }
+    }
     return readJson<AppUser | null>(USER_KEY, null);
   },
 
   createAnonymousUser(username: string): AppUser {
+    if (usingSupabase()) {
+      throw new Error('Live accounts must be created with Supabase.');
+    }
     const user: AppUser = {
       id: createId(),
       username: username.trim(),
@@ -726,6 +740,7 @@ export const backend = {
   },
 
   loadStickers(): StickerState[] {
+    if (usingSupabase() && !readSupabaseSession()?.accessToken) return [];
     const current = getCurrentAccount();
     if (current) return current.account.stickers;
     return readJson<StickerState[]>(STICKERS_KEY, []);
@@ -733,7 +748,8 @@ export const backend = {
 
   async loadStickersRemote(): Promise<StickerState[]> {
     const session = await getActiveSupabaseSession();
-    if (!usingSupabase() || !session) return backend.loadStickers();
+    if (!usingSupabase()) return backend.loadStickers();
+    if (!session) return [];
     const remoteStickers = await fetchSupabaseStickers(session.accessToken);
     const normalized = stickerStatesWithMissingDefaults(remoteStickers);
     writeJson(STICKERS_KEY, normalized);
@@ -760,6 +776,7 @@ export const backend = {
   },
 
   loadConversations<T>(): T[] {
+    if (usingSupabase() && !readSupabaseSession()?.accessToken) return [];
     const current = getCurrentAccount();
     if (current) return current.account.conversations as T[];
     return readJson<T[]>(CONVERSATIONS_KEY, []);
@@ -768,7 +785,8 @@ export const backend = {
   async loadPrivateMessagesRemote(): Promise<StoredConversation[]> {
     const session = await getActiveSupabaseSession();
     const user = backend.loadUser();
-    if (!usingSupabase() || !session || !user) return backend.loadConversations<StoredConversation>();
+    if (!usingSupabase()) return backend.loadConversations<StoredConversation>();
+    if (!session || !user) return [];
 
     const rows = await supabaseRest<SupabasePrivateMessageRow[]>(
       '/rest/v1/messages?select=id,sender_id,receiver_id,message_text,created_at&order=created_at.asc&limit=300',
@@ -825,6 +843,7 @@ export const backend = {
   },
 
   loadPublicMessages(): StoredMessage[] {
+    if (usingSupabase() && !readSupabaseSession()?.accessToken) return [];
     return readJson<StoredMessage[]>(PUBLIC_MESSAGES_KEY, []);
   },
 

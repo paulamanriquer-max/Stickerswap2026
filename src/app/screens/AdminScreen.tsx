@@ -5,6 +5,7 @@ import {
   Trash2, Ban, UserCheck, ArrowLeft, TrendingUp, MessageSquare,
 } from 'lucide-react';
 import { AdminChatMessage, AdminUserSummary, backend } from '../lib/backend';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 type UserStatus = AdminUserSummary['status'];
 
@@ -631,9 +632,10 @@ interface AdminScreenProps {
 
 export function AdminScreen({ onLogout }: AdminScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
-  const [users, setUsers] = useState<AdminUserSummary[]>(() => backend.getAdminUsers());
+  const [users, setUsers] = useState<AdminUserSummary[]>(() => isSupabaseConfigured() ? [] : backend.getAdminUsers());
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    if (isSupabaseConfigured()) return [];
     const messages = loadAdminChatMessages();
     return messages.length > 0 ? messages : initialChatMessages;
   });

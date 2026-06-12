@@ -92,7 +92,11 @@ export function SignUpScreen({ onNavigate, onCreateAccount, onEmailExists }: Sig
       } else if (message === 'ACCOUNT_CONFIRM_EMAIL') {
         setFormMessage('Check your email to confirm your account, then come back and log in.');
       } else {
-        setFormMessage('We could not create your account. Check your connection and try again.');
+        setFormMessage(
+          message
+            ? `Account was not created: ${message}`
+            : 'Account was not created. Check your connection and try again.'
+        );
       }
       setStep('account');
     }

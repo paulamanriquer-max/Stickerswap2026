@@ -123,6 +123,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
           <p className="text-center text-xs leading-5 text-white/50">
             Create an account with your name and email to keep your collection protected.
           </p>
+          <p className="text-center text-[10px] leading-none text-white/25">Live Supabase fix 2</p>
         </div>
       </div>
     </div>

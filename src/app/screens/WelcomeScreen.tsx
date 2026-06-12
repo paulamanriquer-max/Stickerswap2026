@@ -99,7 +99,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
         <div className="flex items-center gap-1 px-2 pr-3 py-1 rounded-full mt-4 mb-3 shrink-0" style={{ backgroundColor: "#fff838" }}>
           <MapPin className="w-4 h-4" style={{ color: "#1E1E1E" }} />
           <span className="text-[16px] font-medium" style={{ color: "#090f1e", fontFamily: "var(--font-body)" }}>
-            Kansas City v2
+            Kansas City
           </span>
         </div>
       </div>
